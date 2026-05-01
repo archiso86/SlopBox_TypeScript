@@ -276,7 +276,6 @@ export class MuteEditor {
     }
 
     public render(): void {
-        if (!this._doc.prefs.enableChannelMuting) return;
         let startingChannelCount: number = this._buttons.length;
 
         if (this._buttons.length != this._doc.song.getChannelCount()) {

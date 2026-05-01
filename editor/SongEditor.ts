@@ -803,11 +803,8 @@ export class SongEditor {
             option({ value: "enableNotePreview" }, "Hear Added Notes"),
             option({ value: "notesOutsideScale" }, "Place Notes Out of Scale"),
             option({ value: "setDefaultScale" }, "Set Current Scale as Default"),
-            option({ value: "alwaysFineNoteVol" }, "Always Fine Note Volume"),
-            option({ value: "enableChannelMuting" }, "Enable Channel Muting"),
             option({ value: "instrumentCopyPaste" }, "Enable Copy/Paste Buttons"),
             option({ value: "enableTagSearch" }, "Enable Tag Search"),
-            option({ value: "instrumentImportExport" }, "Enable Import/Export Buttons"),
             //option({ value: "displayBrowserUrl" }, "Enable Song Data in URL"), //comment for testing
             option({ value: "closePromptByClickoff" }, "Close Prompts on Click Off"),
             option({ value: "rollNoveltyPresets" }, "Can Randomly Select Novelty Presets"),
@@ -816,14 +813,11 @@ export class SongEditor {
         optgroup({ label: "Appearance" },
             option({ value: "showFifth" }, 'Highlight "Fifth" Note'),
             option({ value: "notesFlashWhenPlayed" }, "Notes Flash When Played (DogeBox2)"),
-            option({ value: "instrumentButtonsAtTop" }, "Instrument Buttons at Top"),
             option({ value: "frostedGlassBackground" }, "Frosted Glass Prompt Backdrop"),
             option({ value: "showChannels" }, "Show All Channels"),
             option({ value: "showScrollBar" }, "Show Octave Scroll Bar"),
-            option({ value: "showInstrumentScrollbars" }, "Show Intsrument Scrollbars"),
             option({ value: "showLetters" }, "Show Piano Keys"),
             option({ value: "displayVolumeBar" }, "Show Playback Volume"),
-            option({ value: "showOscilloscope" }, "Show Oscilloscope"),
             option({ value: "showSampleLoadingStatus" }, "Show Sample Loading Status"),
             option({ value: "showDescription" }, "Show Description"),
             option({ value: "layout" }, "Set Layout..."),
@@ -2366,9 +2360,9 @@ export class SongEditor {
 
     public whenUpdated = (): void => {
         const prefs: Preferences = this.doc.prefs;
-        this._muteEditor.container.style.display = prefs.enableChannelMuting ? "" : "none";
+        this._muteEditor.container.style.display = "";
         const trackBounds: DOMRect = this._trackVisibleArea.getBoundingClientRect();
-        this.doc.trackVisibleBars = Math.floor((trackBounds.right - trackBounds.left - (prefs.enableChannelMuting ? 32 : 0)) / this.doc.getBarWidth());
+        this.doc.trackVisibleBars = Math.floor((trackBounds.right - trackBounds.left - 32) / this.doc.getBarWidth());
         this.doc.trackVisibleChannels = Math.floor((trackBounds.bottom - trackBounds.top - 30) / ChannelRow.patternHeight);
         for (let i: number = this.doc.song.pitchChannelCount + this.doc.song.noiseChannelCount; i < this.doc.song.channels.length; i++) {
             const channel: Channel = this.doc.song.channels[i];
@@ -2391,13 +2385,13 @@ export class SongEditor {
         this._octaveScrollBar.container.style.display = prefs.showScrollBar ? "" : "none";
         this._barScrollBar.container.style.display = this.doc.song.barCount > this.doc.trackVisibleBars ? "" : "none";
         this._volumeBarBox.style.display = this.doc.prefs.displayVolumeBar ? "" : "none";
-        this._globalOscscopeContainer.style.display = this.doc.prefs.showOscilloscope ? "" : "none";
-        this.doc.synth.oscEnabled = this.doc.prefs.showOscilloscope;
+        this._globalOscscopeContainer.style.display = "none";
+        this.doc.synth.oscEnabled = false;
         this._sampleLoadingStatusContainer.style.display = this.doc.prefs.showSampleLoadingStatus ? "" : "none";
         this._instrumentCopyGroup.style.display = this.doc.prefs.instrumentCopyPaste ? "" : "none";
         this._instrumentTagRow.style.display = this.doc.prefs.enableTagSearch ? "" : "none";
-        this._instrumentExportGroup.style.display = this.doc.prefs.instrumentImportExport ? "" : "none";
-        this._instrumentSettingsArea.style.scrollbarWidth = this.doc.prefs.showInstrumentScrollbars ? "" : "none";
+        this._instrumentExportGroup.style.display = "";
+        this._instrumentSettingsArea.style.scrollbarWidth = "";
         if (document.getElementById('text-content'))
             document.getElementById('text-content')!.style.display = this.doc.prefs.showDescription ? "" : "none";
 
@@ -2456,11 +2450,8 @@ export class SongEditor {
             (prefs.enableNotePreview ? textOnIcon : textOffIcon) + "Hear Added Notes",
             (prefs.notesOutsideScale ? textOnIcon : textOffIcon) + "Place Notes Out of Scale",
             (prefs.defaultScale == this.doc.song.scale ? textOnIcon : textOffIcon) + "Set Current Scale as Default",
-            (prefs.alwaysFineNoteVol ? textOnIcon : textOffIcon) + "Always Fine Note Volume",
-            (prefs.enableChannelMuting ? textOnIcon : textOffIcon) + "Enable Channel Muting",
             (prefs.instrumentCopyPaste ? textOnIcon : textOffIcon) + "Enable Copy/Paste Buttons",
             (prefs.enableTagSearch ? textOnIcon : textOffIcon) + "Enable Tag Search",
-            (prefs.instrumentImportExport ? textOnIcon : textOffIcon) + "Enable Import/Export Buttons",
             //(prefs.displayBrowserUrl ? textOnIcon : textOffIcon) + "Enable Song Data in URL", //comment for testing
             (prefs.closePromptByClickoff ? textOnIcon : textOffIcon) + "Close Prompts on Click Off",
             (prefs.rollNoveltyPresets ? textOnIcon : textOffIcon) + "Can Randomly Select Novelty Presets",
@@ -2468,14 +2459,11 @@ export class SongEditor {
             textSpacingIcon + "Appearance",
             (prefs.showFifth ? textOnIcon : textOffIcon) + 'Highlight "Fifth" Note',
             (prefs.notesFlashWhenPlayed ? textOnIcon : textOffIcon) + "Notes Flash When Played (Dogebox2)",
-            (prefs.instrumentButtonsAtTop ? textOnIcon : textOffIcon) + "Instrument Buttons at Top",
             (prefs.frostedGlassBackground ? textOnIcon : textOffIcon) + "Frosted Glass Prompt Backdrop",
             (prefs.showChannels ? textOnIcon : textOffIcon) + "Show All Channels",
             (prefs.showScrollBar ? textOnIcon : textOffIcon) + "Show Octave Scroll Bar",
-            (prefs.showInstrumentScrollbars ? textOnIcon : textOffIcon) + "Show Instrument Scrollbars",
             (prefs.showLetters ? textOnIcon : textOffIcon) + "Show Piano Keys",
             (prefs.displayVolumeBar ? textOnIcon : textOffIcon) + "Show Playback Volume",
-            (prefs.showOscilloscope ? textOnIcon : textOffIcon) + "Show Oscilloscope",
             (prefs.showSampleLoadingStatus ? textOnIcon : textOffIcon) + "Show Sample Loading Status",
             (prefs.showDescription ? textOnIcon : textOffIcon) + "Show Description",
             textSpacingIcon + "Set Layout...",
@@ -2560,13 +2548,8 @@ export class SongEditor {
             if (prefs.enableTagSearch) { this._instrumentTagRow.style.display = ""; }
             this._instrumentVolumeSliderRow.style.display = "";
             this._instrumentTypeSelectRow.style.setProperty("display", "");
-            if (prefs.instrumentButtonsAtTop) {
-                this._instrumentSettingsGroup.insertBefore(this._instrumentExportGroup, this._instrumentSettingsGroup.firstChild);
-                this._instrumentSettingsGroup.insertBefore(this._instrumentCopyGroup, this._instrumentSettingsGroup.firstChild);
-            } else {
-                this._instrumentSettingsGroup.appendChild(this._instrumentCopyGroup);
-                this._instrumentSettingsGroup.appendChild(this._instrumentExportGroup);
-            }
+            this._instrumentSettingsGroup.insertBefore(this._instrumentExportGroup, this._instrumentSettingsGroup.firstChild);
+            this._instrumentSettingsGroup.insertBefore(this._instrumentCopyGroup, this._instrumentSettingsGroup.firstChild);
             this._instrumentSettingsGroup.insertBefore(this._instrumentsButtonRow, this._instrumentSettingsGroup.firstChild);
             this._instrumentSettingsGroup.insertBefore(this._instrumentSettingsTextRow, this._instrumentSettingsGroup.firstChild);
 
@@ -3149,13 +3132,8 @@ export class SongEditor {
             this._drumPresetSelect.style.display = "none";
             $("#pitchPresetSelect").parent().hide();
             $("#drumPresetSelect").parent().hide();
-            if (prefs.instrumentButtonsAtTop) {
-                this._modulatorGroup.insertBefore(this._instrumentExportGroup, this._modulatorGroup.firstChild);
-                this._modulatorGroup.insertBefore(this._instrumentCopyGroup, this._modulatorGroup.firstChild);
-            } else {
-                this._modulatorGroup.appendChild(this._instrumentCopyGroup);
-                this._modulatorGroup.appendChild(this._instrumentExportGroup);
-            }
+            this._modulatorGroup.insertBefore(this._instrumentExportGroup, this._modulatorGroup.firstChild);
+            this._modulatorGroup.insertBefore(this._instrumentCopyGroup, this._modulatorGroup.firstChild);
 
             this._modulatorGroup.insertBefore(this._instrumentsButtonRow, this._modulatorGroup.firstChild);
             this._modulatorGroup.insertBefore(this._instrumentSettingsTextRow, this._modulatorGroup.firstChild);
@@ -4598,8 +4576,6 @@ export class SongEditor {
                     this.doc.prefs.showLetters = true;
                     this.doc.prefs.showChannels = true;
                     this.doc.prefs.showScrollBar = true;
-                    this.doc.prefs.alwaysFineNoteVol = false;
-                    this.doc.prefs.enableChannelMuting = true;
                     //this.doc.prefs.displayBrowserUrl = true;
                     this.doc.prefs.displayVolumeBar = true;
                     this.doc.prefs.layout = "wide";
@@ -4624,10 +4600,8 @@ export class SongEditor {
             case 77: // m
                 if (canPlayNotes) break;
                 if (needControlForShortcuts == (event.ctrlKey || event.metaKey)) {
-                    if (this.doc.prefs.enableChannelMuting) {
-                        this.doc.selection.muteChannels(event.shiftKey);
-                        event.preventDefault();
-                    }
+                    this.doc.selection.muteChannels(event.shiftKey);
+                    event.preventDefault();
                 }
                 break;
             case 78: // n
@@ -4730,8 +4704,6 @@ export class SongEditor {
                     this.doc.prefs.showLetters = true;
                     this.doc.prefs.showChannels = true;
                     this.doc.prefs.showScrollBar = true;
-                    this.doc.prefs.alwaysFineNoteVol = false;
-                    this.doc.prefs.enableChannelMuting = true;
                     //this.doc.prefs.displayBrowserUrl = true;
                     this.doc.prefs.displayVolumeBar = true;
                     this.doc.prefs.layout = "tall";
@@ -4739,11 +4711,8 @@ export class SongEditor {
                     this.doc.prefs.closePromptByClickoff = false;
                     this.doc.prefs.colorTheme = "slarmoosbox";
                     this.doc.prefs.frostedGlassBackground = false;
-                    this.doc.prefs.instrumentButtonsAtTop = true;
                     this.doc.prefs.instrumentCopyPaste = true;
-                    this.doc.prefs.instrumentImportExport = true;
                     this.doc.prefs.notesFlashWhenPlayed = true;
-                    this.doc.prefs.showOscilloscope = true;
                     this.doc.prefs.rollNoveltyPresets = false;
                     this.doc.prefs.enableTagSearch = false;
                     this.doc.prefs.save();
@@ -4755,7 +4724,7 @@ export class SongEditor {
                 }
                 else if (event.altKey) {
                     this._openPrompt("exportInstrument");
-                } else if (this.doc.prefs.enableChannelMuting) {
+                } else {
                     // JummBox deviation: I like shift+s as just another mute toggle personally.
                     // Easier to reach than M and the shift+s invert functionality I am overwriting could be 
                     // obtained with M anyway. Useability-wise you very often want to 'add' channels on to a solo as you work.
@@ -4841,8 +4810,6 @@ export class SongEditor {
                     this.doc.prefs.showLetters = true;
                     this.doc.prefs.showChannels = true;
                     this.doc.prefs.showScrollBar = true;
-                    this.doc.prefs.alwaysFineNoteVol = true;
-                    this.doc.prefs.enableChannelMuting = true;
                     //this.doc.prefs.displayBrowserUrl = true;
                     this.doc.prefs.displayVolumeBar = true;
                     this.doc.prefs.layout = "long";
@@ -4850,11 +4817,8 @@ export class SongEditor {
                     this.doc.prefs.closePromptByClickoff = true;
                     this.doc.prefs.colorTheme = "violet verdant";
                     this.doc.prefs.frostedGlassBackground = false;
-                    this.doc.prefs.instrumentButtonsAtTop = true;
                     this.doc.prefs.instrumentCopyPaste = true;
-                    this.doc.prefs.instrumentImportExport = true;
                     this.doc.prefs.notesFlashWhenPlayed = true;
-                    this.doc.prefs.showOscilloscope = true;
                     this.doc.prefs.rollNoveltyPresets = true;
                     this.doc.prefs.enableTagSearch = true;
                     this.doc.prefs.save();
@@ -5751,13 +5715,6 @@ export class SongEditor {
             case "showScrollBar":
                 this.doc.prefs.showScrollBar = !this.doc.prefs.showScrollBar;
                 break;
-            case "alwaysFineNoteVol":
-                this.doc.prefs.alwaysFineNoteVol = !this.doc.prefs.alwaysFineNoteVol;
-                break;
-            case "enableChannelMuting":
-                this.doc.prefs.enableChannelMuting = !this.doc.prefs.enableChannelMuting;
-                for (const channel of this.doc.song.channels) channel.muted = false;
-                break;
             case "displayBrowserUrl":
                 this.doc.toggleDisplayBrowserUrl();
                 break;
@@ -5779,14 +5736,8 @@ export class SongEditor {
             case "recordingSetup":
                 this._openPrompt("recordingSetup");
                 break;
-            case "showOscilloscope":
-                this.doc.prefs.showOscilloscope = !this.doc.prefs.showOscilloscope;
-                break;
             case "showDescription":
                 this.doc.prefs.showDescription = !this.doc.prefs.showDescription;
-                break;
-            case "showInstrumentScrollbars":
-                this.doc.prefs.showInstrumentScrollbars = !this.doc.prefs.showInstrumentScrollbars;
                 break;
             case "showSampleLoadingStatus":
                 this.doc.prefs.showSampleLoadingStatus = !this.doc.prefs.showSampleLoadingStatus;
@@ -5796,12 +5747,6 @@ export class SongEditor {
                 break;
             case "instrumentCopyPaste":
                 this.doc.prefs.instrumentCopyPaste = !this.doc.prefs.instrumentCopyPaste;
-                break;
-            case "instrumentImportExport":
-                this.doc.prefs.instrumentImportExport = !this.doc.prefs.instrumentImportExport;
-                break;
-            case "instrumentButtonsAtTop":
-                this.doc.prefs.instrumentButtonsAtTop = !this.doc.prefs.instrumentButtonsAtTop;
                 break;
             case "frostedGlassBackground":
                 this.doc.prefs.frostedGlassBackground = !this.doc.prefs.frostedGlassBackground;

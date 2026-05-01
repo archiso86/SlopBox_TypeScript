@@ -936,6 +936,8 @@ html {
     position: relative;
     vertical-align: middle;
     background-color: ${ColorConfig.uiWidgetFocus};
+    max-width: calc(100vw - 8px);
+    overflow-x: hidden;
 }
 
 .select2-container--default .select2-results>.select2-results__options {
@@ -952,6 +954,8 @@ html {
     padding: 2px;
     user-select: none;
     -webkit-user-select: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 .select2-container--default .select2-results__option .select2-results__option {
     padding-left: 0.1em;
@@ -966,6 +970,8 @@ html {
 
 .beepboxEditor .menu select {
 	padding: 0 var(--button-size);
+	max-width: calc(100vw - 8px);
+	text-overflow: ellipsis;
 }
 .beepboxEditor select:focus {
 	background: ${ColorConfig.uiWidgetFocus};
