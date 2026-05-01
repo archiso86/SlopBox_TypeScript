@@ -196,6 +196,17 @@ a:hover {
     transition: transform 0.3s ease;
   }
 
+  .logo-text {
+    color: #ad7760;
+    display: inline-block;
+    font-family: 'B612', sans-serif;
+    font-size: 32px;
+    font-weight: bold;
+    line-height: 64px;
+    min-width: 128px;
+    text-align: center;
+  }
+
   .logo-glow {
     position: absolute;
     top: 0;
@@ -356,7 +367,7 @@ details:hover {
     color: #b961f8;
 }
 
-.jukebox {
+.slopbox {
     color: #AD7760;
 }
 

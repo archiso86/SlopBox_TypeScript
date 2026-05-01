@@ -1,7 +1,7 @@
 {
-	"name": "Slarmoo's Box",
-	"short_name": "Slarmoo's Box",
-	"description": "Slarmoo's Box is a mod of Ultrabox that aims to advance Beepbox's capabilities.",
+	"name": "slopbox",
+	"short_name": "slopbox",
+	"description": "slopbox is a music editor that aims to add a crap ton of presets.",
 	"scope": "/",
 	"start_url": ".",
 	"display": "browser",
