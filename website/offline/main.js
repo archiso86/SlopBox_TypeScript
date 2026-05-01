@@ -17,11 +17,9 @@ const createWindow = () => {
 		}
 	})
 
-	win.loadFile('index.html');
+	win.loadFile(path.join(__dirname, 'index.html'));
 	win.removeMenu();
 	win.maximize();
-	// The line below opens the dev tools
-	if (!app.isPackaged) win.webContents.openDevTools();
 }
 
 // Menu.setApplicationMenu(mainMenu);

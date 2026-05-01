@@ -1508,7 +1508,8 @@ export class SongEditor {
         window.requestAnimationFrame(this._animate);
 
         if (!("share" in navigator)) {
-            this._fileMenu.removeChild(this._fileMenu.querySelector("[value='shareUrl']")!);
+            const shareUrlOption: Element | null = this._fileMenu.querySelector("[value='shareUrl']");
+            if (shareUrlOption != null) this._fileMenu.removeChild(shareUrlOption);
         }
 
         this._scaleSelect.appendChild(optgroup({ label: "Edit" },
@@ -5871,4 +5872,3 @@ export class SongEditor {
         this.doc.prefs.save();
     }
 }
-

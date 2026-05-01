@@ -10443,7 +10443,7 @@ export class Synth {
         this.chorusDelayBufferMask = this.chorusDelayBufferSize - 1;
     }
 
-    private activateAudio(): void {
+    private activateAudio(): boolean {
         const bufferSize: number = this.anticipatePoorPerformance ? (this.preferLowerLatency ? 2048 : 4096) : (this.preferLowerLatency ? 512 : 2048);
         if (this.audioCtx == null || this.scriptNode == null || this.scriptNode.bufferSize != bufferSize) {
             if (this.scriptNode != null) this.deactivateAudio();
@@ -10458,7 +10458,13 @@ export class Synth {
 
             this.computeDelayBufferSizes();
         }
-        this.audioCtx.resume();
+        const resumeResult: Promise<void> | undefined = this.audioCtx.resume();
+        if (resumeResult != undefined) {
+            resumeResult.catch(() => { });
+        }
+
+        const userActivation: UserActivation | undefined = navigator.userActivation;
+        return this.audioCtx.state == undefined || this.audioCtx.state == "running" || userActivation == undefined || userActivation.isActive;
     }
 
     private deactivateAudio(): void {
@@ -10479,7 +10485,7 @@ export class Synth {
         if (this.isPlayingSong) return;
         this.initModFilters(this.song);
         this.computeLatestModValues();
-        this.activateAudio();
+        if (!this.activateAudio()) return;
         this.warmUpSynthesizer(this.song);
         this.isPlayingSong = true;
     }

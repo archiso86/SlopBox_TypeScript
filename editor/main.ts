@@ -19,13 +19,23 @@ beepboxEditorContainer.appendChild(editor.mainLayer);
 editor.whenUpdated();
 
 // Fade-in transitions
-editor.mainLayer.className += " load";
-editor.mainLayer.getElementsByClassName("pattern-area")[0].className += " load";
-editor.mainLayer.getElementsByClassName("settings-area")[0].className += " load";
-editor.mainLayer.getElementsByClassName("editor-song-settings")[0].className += " load";
-editor.mainLayer.getElementsByClassName("instrument-settings-area")[0].className += " load";
-editor.mainLayer.getElementsByClassName("trackAndMuteContainer")[0].className += " load";
-editor.mainLayer.getElementsByClassName("barScrollBar")[0].className += " load";
+const addLoadClass = (element: Element | null): void => {
+	if (element != null) element.classList.add("load");
+};
+
+addLoadClass(editor.mainLayer);
+for (const className of [
+	"pattern-area",
+	"settings-area",
+	"editor-song-settings",
+	"instrument-settings-area",
+	"trackAndMuteContainer",
+	"barScrollBar",
+]) {
+	for (const element of Array.from(editor.mainLayer.getElementsByClassName(className))) {
+		addLoadClass(element);
+	}
+}
 
 // Give select2 class to these
 $('#pitchPresetSelect').select2({ dropdownAutoWidth: true });
@@ -144,7 +154,7 @@ if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 
 editor.updatePlayButton();
 
-if ("serviceWorker" in navigator) {
+if ("serviceWorker" in navigator && location.protocol != "file:") {
     navigator.serviceWorker.register("/service_worker.js", { updateViaCache: "all", scope: "/" }).catch(() => { });
 }
 
