@@ -1,5 +1,6 @@
 # slopbox
 TypeScript music editor derived from BeepBox/JummBox/Ultrabox/SlarmoosBox/JukeeBox
+Allows saving made songs to a `.json` file
 
 ---
 # Build Environment
