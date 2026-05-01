@@ -1,5 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron/main'; //, Menu
-// const { mainMenu } = require("./menu");
+import { app, BrowserWindow, ipcMain, Menu } from 'electron/main';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -11,7 +10,7 @@ const createWindow = () => {
 		height: 600,
 		// fullscreen: true,
 		icon: path.join(__dirname, 'icon.png'),
-		// autoHideMenuBar: true
+		autoHideMenuBar: true,
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js')
 		}
@@ -22,8 +21,7 @@ const createWindow = () => {
 	win.maximize();
 }
 
-// Menu.setApplicationMenu(mainMenu);
-// Menu.setApplicationMenu(null);
+Menu.setApplicationMenu(null);
 
 app.whenReady().then(() => {
 	createWindow()
