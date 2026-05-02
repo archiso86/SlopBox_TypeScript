@@ -27,8 +27,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build deploy files
-        run: npm run build-editor
+      - name: Build site
+        run: |
+          npm run build
+          npm run deploy-files
+          test -f ./to_deploy/index.html
+          find ./to_deploy -maxdepth 2 -type f | sort | head -100
 
       - name: Deploy to archiso86.github.io
         uses: peaceiris/actions-gh-pages@v4
