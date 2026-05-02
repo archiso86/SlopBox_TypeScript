@@ -420,31 +420,6 @@ function onTogglePlay(): void {
 	renderPlayButton();
 }
 
-function stopPlayback(): void {
-	if (synth.song == null) return;
-	if (animationRequest != null) cancelAnimationFrame(animationRequest);
-	animationRequest = null;
-	synth.pause();
-	synth.playhead = 0;
-	synth.computeLatestModValues();
-	renderPlayhead();
-	volumeUpdate();
-	renderPlayButton();
-}
-
-function installMediaSessionHandlers(): void {
-	if (!("mediaSession" in navigator)) return;
-
-	navigator.mediaSession.setActionHandler("play", () => {
-		if (!synth.playing) onTogglePlay();
-	});
-	navigator.mediaSession.setActionHandler("pause", () => {
-		if (synth.playing) onTogglePlay();
-	});
-	navigator.mediaSession.setActionHandler("stop", stopPlayback);
-	navigator.mediaSession.playbackState = "paused";
-}
-
 function onToggleLoop(): void {
 	if (synth.loopRepeatCount == -1) {
 		synth.loopRepeatCount = 0;
@@ -692,13 +667,6 @@ function renderPlayButton(): void {
 		playButton.textContent = "Play";
 	}
 	pauseButtonDisplayed = synth.playing;
-	updateMediaSessionPlaybackState();
-}
-
-function updateMediaSessionPlaybackState(): void {
-	if ("mediaSession" in navigator) {
-		navigator.mediaSession.playbackState = synth.playing ? "playing" : "paused";
-	}
 }
 
 function renderLoopIcon(): void {
@@ -842,7 +810,6 @@ setSynthVolume();
 
 window.addEventListener("resize", onWindowResize);
 window.addEventListener("keydown", onKeyPressed);
-installMediaSessionHandlers();
 
 timeline.addEventListener("mousedown", onTimelineMouseDown);
 window.addEventListener("mousemove", onTimelineMouseMove);
