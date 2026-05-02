@@ -29,6 +29,7 @@ jobs:
 
       - name: Build site
         run: |
+          rm -rf ./to_deploy
           npm run build
           npm run deploy-files
           test -f ./to_deploy/index.html
