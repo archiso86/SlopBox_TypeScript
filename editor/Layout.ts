@@ -5,7 +5,6 @@ import { ColorConfig } from "./ColorConfig";
 
 export class Layout {
 	private static readonly _layoutMap: {[K: string]: string} = {
-		"small": "",
 		"long": `\
 
 			/* long layout */
@@ -740,6 +739,6 @@ export class Layout {
 		private static readonly _styleElement: HTMLStyleElement = document.head.appendChild(HTML.style({type: "text/css"}));
 		
 	public static setLayout(layout: string): void {
-		this._styleElement.textContent = this._layoutMap[layout];
+		this._styleElement.textContent = this._layoutMap[layout] || this._layoutMap["long"];
 	}
 }

@@ -3698,7 +3698,7 @@ export class ChangePaste extends ChangeGroup {
 export class ChangePasteInstrument extends ChangeGroup {
     constructor(doc: SongDocument, instrument: Instrument, instrumentCopy: any) {
         super();
-        instrument.fromJsonObject(instrumentCopy, instrumentCopy["isDrum"], instrumentCopy["isMod"], false, false);
+        instrument.fromJsonObject(instrumentCopy, doc.song.getChannelIsNoise(doc.channel), doc.song.getChannelIsMod(doc.channel), false, false);
         doc.notifier.changed();
         this._didSomething();
     }
@@ -4394,7 +4394,7 @@ export function pickRandomPresetValue(isNoise: boolean,rollNoveltyPresets: boole
         if ((category.name.includes("Novelty") && rollNoveltyPresets == false) || category.name == "Unmodified") continue;
         for (let presetIndex: number = 0; presetIndex < category.presets.length; presetIndex++) {
             const preset: Preset = category.presets[presetIndex];
-            if ((preset.settings != undefined && (preset.isNoise == true) == isNoise) && ((tagList == "") || (ignoreTags == true) || (
+            if ((preset.settings != undefined) && ((tagList == "") || (ignoreTags == true) || (
                 
                 tagList.every((tag: any) => 
                 (tag.startsWith("!") && !preset.tags.includes(tag.slice(1))) || 
@@ -4439,7 +4439,7 @@ export function pickNextPresetValue(isNoise: boolean,rollNoveltyPresets: boolean
         for (let presetIndex: number = 0; presetIndex < category.presets.length; presetIndex++) {
             const preset: Preset = category.presets[presetIndex];
             
-            if ((preset.settings != undefined && (preset.isNoise == true) == isNoise) && ((tagList == "") || (
+            if ((preset.settings != undefined) && ((tagList == "") || (
                 
                 tagList.every((tag: any) => 
                 (tag.startsWith("!") && !preset.tags.includes(tag.slice(1))) || 

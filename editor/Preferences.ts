@@ -62,11 +62,11 @@ export class Preferences {
 		this.showLetters = window.localStorage.getItem("showLetters") != "false";
 		this.showChannels = window.localStorage.getItem("showChannels") != "false";
 		this.showScrollBar = window.localStorage.getItem("showScrollBar") != "false";
-		this.alwaysFineNoteVol = window.localStorage.getItem("alwaysFineNoteVol") == "true";
+		this.alwaysFineNoteVol = window.localStorage.getItem("alwaysFineNoteVol") != "false";
 		this.displayVolumeBar = window.localStorage.getItem("displayVolumeBar") != "false";
 		this.instrumentCopyPaste = window.localStorage.getItem("instrumentCopyPaste") != "false";
-		this.instrumentImportExport = window.localStorage.getItem("instrumentImportExport") == "true";
-		this.instrumentButtonsAtTop = window.localStorage.getItem("instrumentButtonsAtTop") == "true";
+		this.instrumentImportExport = window.localStorage.getItem("instrumentImportExport") != "false";
+		this.instrumentButtonsAtTop = window.localStorage.getItem("instrumentButtonsAtTop") != "false";
 		this.enableChannelMuting = window.localStorage.getItem("enableChannelMuting") != "false";
 		//this.displayBrowserUrl = window.localStorage.getItem("displayBrowserUrl") != "false"; //comment for testing
 		this.pressControlForShortcuts = window.localStorage.getItem("pressControlForShortcuts") == "true";
@@ -86,13 +86,14 @@ export class Preferences {
 		this.keyboardLayout = window.localStorage.getItem("keyboardLayout") || "pianoTransposingC";
 		this.bassOffset = (+(<any>window.localStorage.getItem("bassOffset"))) || 0;
 		this.layout = window.localStorage.getItem("layout") || "long";
+		if (this.layout == "small") this.layout = "long";
 		this.colorTheme = window.localStorage.getItem("colorTheme") || ColorConfig.defaultTheme;
 		this.customTheme = window.localStorage.getItem("customTheme");
         this.customTheme2 = window.localStorage.getItem("customTheme2");
 		this.visibleOctaves = ((<any>window.localStorage.getItem("visibleOctaves")) >>> 0) || Preferences.defaultVisibleOctaves;
 		//jukebox
 		this.rollNoveltyPresets = window.localStorage.getItem("rollNoveltyPresets") == "true";
-		this.enableTagSearch = window.localStorage.getItem("enableTagSearch") != "false";
+		this.enableTagSearch = false;
 		
 		const defaultScale: Scale | undefined = Config.scales.dictionary[window.localStorage.getItem("defaultScale")!];
 		this.defaultScale = (defaultScale != undefined) ? defaultScale.index : 0;
@@ -149,6 +150,6 @@ export class Preferences {
 		window.localStorage.setItem("visibleOctaves", String(this.visibleOctaves));
 		//jukebox
 		window.localStorage.setItem("rollNoveltyPresets", this.rollNoveltyPresets ? "true" : "false");
-		window.localStorage.setItem("enableTagSearch", this.enableTagSearch ? "true" : "false");
+		window.localStorage.setItem("enableTagSearch", "false");
 	}
 }

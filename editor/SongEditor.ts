@@ -55,7 +55,7 @@ import { SampleLoadingStatusPrompt } from "./SampleLoadingStatusPrompt";
 import { AddSamplesPrompt } from "./AddSamplesPrompt";
 import { ShortenerConfigPrompt } from "./ShortenerConfigPrompt";
 
-const { button, div, input, select, span, optgroup, option, canvas } = HTML;
+const { button, div, h2, input, select, span, optgroup, option, canvas } = HTML;
 
 function buildOptions(menu: HTMLSelectElement, items: ReadonlyArray<string | number>): HTMLSelectElement {
     for (let index: number = 0; index < items.length; index++) {
@@ -82,21 +82,21 @@ function buildPresetOptions(isNoise: boolean, idSet: string): HTMLSelectElement 
 
     // Show the "spectrum" custom type in both pitched and noise channels.
     //const customTypeGroup: HTMLElement = optgroup({label: EditorConfig.presetCategories[0].name});
-    if (isNoise) {
-        menu.appendChild(option({ value: InstrumentType.noise }, EditorConfig.valueToPreset(InstrumentType.noise)!.name));
-        menu.appendChild(option({ value: InstrumentType.spectrum }, EditorConfig.valueToPreset(InstrumentType.spectrum)!.name));
-        menu.appendChild(option({ value: InstrumentType.drumset }, EditorConfig.valueToPreset(InstrumentType.drumset)!.name));
-    } else {
-        menu.appendChild(option({ value: InstrumentType.chip }, EditorConfig.valueToPreset(InstrumentType.chip)!.name));
-        menu.appendChild(option({ value: InstrumentType.customChipWave }, EditorConfig.valueToPreset(InstrumentType.customChipWave)!.name));
-        menu.appendChild(option({ value: InstrumentType.pwm }, EditorConfig.valueToPreset(InstrumentType.pwm)!.name));
-        menu.appendChild(option({ value: InstrumentType.supersaw }, EditorConfig.valueToPreset(InstrumentType.supersaw)!.name));
-        menu.appendChild(option({ value: InstrumentType.fm }, EditorConfig.valueToPreset(InstrumentType.fm)!.name));
-        menu.appendChild(option({ value: InstrumentType.fm6op }, EditorConfig.instrumentToPreset(InstrumentType.fm6op)!.name));
-        menu.appendChild(option({ value: InstrumentType.harmonics }, EditorConfig.valueToPreset(InstrumentType.harmonics)!.name));
-        menu.appendChild(option({ value: InstrumentType.pickedString }, EditorConfig.valueToPreset(InstrumentType.pickedString)!.name));
-        menu.appendChild(option({ value: InstrumentType.spectrum }, EditorConfig.valueToPreset(InstrumentType.spectrum)!.name));
-        menu.appendChild(option({ value: InstrumentType.noise }, EditorConfig.valueToPreset(InstrumentType.noise)!.name));
+    const customTypes: InstrumentType[] = [
+        InstrumentType.chip,
+        InstrumentType.customChipWave,
+        InstrumentType.pwm,
+        InstrumentType.supersaw,
+        InstrumentType.fm,
+        InstrumentType.fm6op,
+        InstrumentType.harmonics,
+        InstrumentType.pickedString,
+        InstrumentType.spectrum,
+        InstrumentType.noise,
+        InstrumentType.drumset,
+    ];
+    for (const instrumentType of customTypes) {
+        menu.appendChild(option({ value: instrumentType }, EditorConfig.instrumentToPreset(instrumentType)!.name));
     }
 
     // TODO - When you port over the Dogebox2 import/export buttons be sure to uncomment these
@@ -116,10 +116,8 @@ function buildPresetOptions(isNoise: boolean, idSet: string): HTMLSelectElement 
         let foundAny: boolean = false;
         for (let presetIndex: number = 0; presetIndex < category.presets.length; presetIndex++) {
             const preset: Preset = category.presets[presetIndex];
-            if (((preset.isNoise == true) == isNoise)) {
-                group.appendChild(option({ value: (categoryIndex << 12) + presetIndex }, preset.name));
-                foundAny = true;
-            }
+            group.appendChild(option({ value: (categoryIndex << 12) + presetIndex }, preset.name));
+            foundAny = true;
         }
 
         if (categoryIndex === 1 && foundAny) {
@@ -173,6 +171,167 @@ function setSelectedValue(menu: HTMLSelectElement, value: number, isSelect2: boo
         // Change select2 value, if this select is a member of that class.
         if (isSelect2) {
             $(menu).val(value).trigger('change.select2');
+        }
+    }
+}
+
+class InstrumentTypePrompt implements Prompt {
+    private readonly _searchInput: HTMLInputElement = input({ type: "text", placeholder: "Search", style: "width: 100%; box-sizing: border-box; margin-bottom: 0.6em;" });
+    private readonly _categoryContainer: HTMLDivElement = div({ style: "width: 12em; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.25em; overflow-y: auto; padding-right: 0.5em;" });
+    private readonly _optionContainer: HTMLDivElement = div({ style: "flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.45em;" });
+    private readonly _cancelButton: HTMLButtonElement = button({ class: "cancelButton" });
+    private readonly _optionButtons: HTMLButtonElement[] = [];
+    private readonly _groups: { label: string, options: { value: string, label: string }[] }[];
+    private _selectedCategory: string | null = null;
+    public readonly container: HTMLDivElement;
+
+    constructor(private _doc: SongDocument) {
+        this._groups = this._collectGroups();
+        this.container = div({ class: "prompt noSelection", style: "width: 760px; max-width: 92vw;" },
+            h2("Instrument Type"),
+            this._searchInput,
+            div({ style: "height: 70vh; max-height: 34em; display: flex; flex-direction: row; gap: 0.75em;" },
+                this._categoryContainer,
+                this._optionContainer,
+            ),
+            this._cancelButton,
+        );
+        this._render();
+        this._searchInput.addEventListener("input", this._whenSearchChanged);
+        this._cancelButton.addEventListener("click", this._close);
+        this.container.addEventListener("keydown", this._whenKeyPressed);
+        setTimeout(() => this._searchInput.focus());
+    }
+
+    private _collectGroups(): { label: string, options: { value: string, label: string }[] }[] {
+        const isNoise: boolean = this._doc.song.getChannelIsNoise(this._doc.channel);
+        const menu: HTMLSelectElement = buildPresetOptions(isNoise, "");
+        const groups: { label: string, options: { value: string, label: string }[] }[] = [];
+
+        for (const child of Array.from(menu.children)) {
+            if (child instanceof HTMLOptGroupElement) {
+                const options: { value: string, label: string }[] = Array.from(child.children).map((optionElement: Element) => {
+                    const presetOption: HTMLOptionElement = <HTMLOptionElement>optionElement;
+                    return { value: presetOption.value, label: presetOption.textContent || "" };
+                });
+                groups.push({ label: child.label.replace(" ▾", ""), options: options });
+            }
+        }
+        return groups;
+    }
+
+    private _render(): void {
+        const query: string = this._searchInput.value.trim().toLowerCase();
+        const searched: boolean = query.length > 0;
+        const visibleGroups: { label: string, options: { value: string, label: string }[] }[] = this._groups.filter(group =>
+            !searched ||
+            group.label.toLowerCase().includes(query) ||
+            group.options.some(preset => preset.label.toLowerCase().includes(query))
+        );
+
+        this._removeChildren(this._categoryContainer);
+        this._removeChildren(this._optionContainer);
+        this._optionButtons.length = 0;
+
+        this._categoryContainer.appendChild(this._buildCategoryButton(null, "All"));
+        for (const group of visibleGroups) {
+            this._categoryContainer.appendChild(this._buildCategoryButton(group.label, group.label));
+        }
+
+        const groupsToRender: { label: string, options: { value: string, label: string }[] }[] = (searched || this._selectedCategory == null)
+            ? visibleGroups
+            : this._groups.filter(group => group.label == this._selectedCategory);
+
+        for (const group of groupsToRender) {
+            const options: { value: string, label: string }[] = searched && !group.label.toLowerCase().includes(query)
+                ? group.options.filter(preset => preset.label.toLowerCase().includes(query))
+                : group.options;
+
+            if (options.length > 0) {
+                this._optionContainer.appendChild(this._buildGroup(group.label, options.map(preset => this._buildButton(preset.value, preset.label))));
+            }
+        }
+    }
+
+    private _removeChildren(element: HTMLElement): void {
+        while (element.firstChild != null) {
+            element.removeChild(element.firstChild);
+        }
+    }
+
+    private _buildCategoryButton(category: string | null, label: string): HTMLButtonElement {
+        const selected: boolean = this._searchInput.value.trim() == "" && this._selectedCategory == category;
+        const categoryButton: HTMLButtonElement = button({ type: "button", style: "width: 100%; text-align: left;" + (selected ? ` background: ${ColorConfig.uiWidgetFocus};` : "") }, label);
+        categoryButton.addEventListener("click", () => {
+            this._searchInput.value = "";
+            this._selectedCategory = category;
+            this._render();
+        });
+        return categoryButton;
+    }
+
+    private _buildGroup(label: string, buttons: HTMLButtonElement[]): HTMLDivElement {
+        return div({ style: "display: flex; flex-direction: column; gap: 0.25em;" },
+            div({ style: `font-size: smaller; color: ${ColorConfig.secondaryText};` }, label),
+            div({ style: "display: grid; grid-template-columns: repeat(auto-fit, minmax(10em, 1fr)); gap: 0.25em;" }, buttons),
+        );
+    }
+
+    private _buildButton(value: string, label: string): HTMLButtonElement {
+        const optionButton: HTMLButtonElement = button({ type: "button", value: value, style: "width: 100%;" }, label);
+        optionButton.addEventListener("click", this._choosePreset);
+        this._optionButtons.push(optionButton);
+        return optionButton;
+    }
+
+    private _choosePreset = (event: Event): void => {
+        const value: string = (<HTMLButtonElement>event.currentTarget).value;
+        if (isNaN(<number><unknown>value)) {
+            switch (value) {
+                case "randomPreset": {
+                    const presetValue: number = pickRandomPresetValue(this._doc.song.getChannelIsNoise(this._doc.channel), this._doc.prefs.rollNoveltyPresets);
+                    if (presetValue > 0) {
+                        this._doc.prompt = null;
+                        this._doc.record(new ChangePreset(this._doc, presetValue), true);
+                    } else if (presetValue == -1) {
+                        alert("Either you are using incompatible tags, or you are using a tag combination that no preset has. \n\nPlease double check your tag combination.");
+                    } else if (presetValue == -2) {
+                        alert("One or more of the tags you entered doesn't exist. \nPlease double check your spelling. \n\nIf you don't know what tags exist, you can reffer to the tag list in the description below.");
+                    }
+                    break;
+                }
+                case "randomGenerated":
+                    this._doc.prompt = null;
+                    this._doc.record(new ChangeRandomGeneratedInstrument(this._doc, false), true);
+                    break;
+            }
+        } else {
+            this._doc.prompt = null;
+            this._doc.record(new ChangePreset(this._doc, parseInt(value)), true);
+        }
+    }
+
+    private _close = (): void => {
+        this._doc.undo();
+    }
+
+    public cleanUp = (): void => {
+        this._searchInput.removeEventListener("input", this._whenSearchChanged);
+        this._cancelButton.removeEventListener("click", this._close);
+        this.container.removeEventListener("keydown", this._whenKeyPressed);
+        for (const optionButton of this._optionButtons) {
+            optionButton.removeEventListener("click", this._choosePreset);
+        }
+    }
+
+    private _whenSearchChanged = (): void => {
+        this._selectedCategory = null;
+        this._render();
+    }
+
+    private _whenKeyPressed = (event: KeyboardEvent): void => {
+        if (event.keyCode == 27) {
+            this._close();
         }
     }
 }
@@ -773,17 +932,7 @@ export class SongEditor {
     );
     private readonly _editMenu: HTMLSelectElement = select({ style: "width: 100%;" },
         option({ selected: true, disabled: true, hidden: false }, "Edit"), // todo: "hidden" should be true but looks wrong on mac chrome, adds checkmark next to first visible option even though it's not selected. :(
-        option({ value: "undo" }, "Undo (Z)"),
-        option({ value: "redo" }, "Redo (Y)"),
-        option({ value: "copy" }, "Copy Pattern (C)"),
-        option({ value: "pasteNotes" }, "Paste Pattern Notes (V)"),
         option({ value: "pasteNumbers" }, "Paste Pattern Numbers (" + EditorConfig.ctrlSymbol + "⇧V)"),
-        option({ value: "insertBars" }, "Insert Bar (⏎)"),
-        option({ value: "deleteBars" }, "Delete Selected Bars (⌫)"),
-        option({ value: "insertChannel" }, "Insert Channel (" + EditorConfig.ctrlSymbol + "⏎)"),
-        option({ value: "deleteChannel" }, "Delete Selected Channels (" + EditorConfig.ctrlSymbol + "⌫)"),
-        option({ value: "selectChannel" }, "Select Channel (⇧A)"),
-        option({ value: "selectAll" }, "Select All (A)"),
         option({ value: "duplicatePatterns" }, "Duplicate Reused Patterns (D)"),
         option({ value: "transposeUp" }, "Move Notes Up (+ or ⇧+)"),
         option({ value: "transposeDown" }, "Move Notes Down (- or ⇧-)"),
@@ -806,7 +955,6 @@ export class SongEditor {
             option({ value: "alwaysFineNoteVol" }, "Always Fine Note Volume"),
             option({ value: "enableChannelMuting" }, "Enable Channel Muting"),
             option({ value: "instrumentCopyPaste" }, "Enable Copy/Paste Buttons"),
-            option({ value: "enableTagSearch" }, "Enable Tag Search"),
             option({ value: "instrumentImportExport" }, "Enable Import/Export Buttons"),
             //option({ value: "displayBrowserUrl" }, "Enable Song Data in URL"), //comment for testing
             option({ value: "closePromptByClickoff" }, "Close Prompts on Click Off"),
@@ -1288,10 +1436,12 @@ export class SongEditor {
         span({ class: "tip", onclick: () => this._openPrompt("instrumentTags") }, "Tags:"), 
         this._presetTagsInputBox
     );
+    private readonly _instrumentTypeButton: HTMLButtonElement = button({ type: "button", style: "width: 61.5%;", onclick: () => this._openPrompt("instrumentType") }, "chip");
     
     private readonly _instrumentTypeSelectRow: HTMLDivElement = div({ class: "selectRow", id: "typeSelectRow" },
         span({ class: "tip", onclick: () => this._openPrompt("instrumentType") }, "Type:"),
-        div( 
+        this._instrumentTypeButton,
+        div({ style: "display: none;" },
             div({ class: "pitchSelect" }, this._pitchedPresetSelect),
             div({ class: "drumSelect" }, this._drumPresetSelect)
         ),
@@ -2215,7 +2365,7 @@ export class SongEditor {
         this._currentPromptName = promptName;
 
         if (this.prompt) {
-            if (this._wasPlaying && !(this.prompt instanceof TipPrompt || this.prompt instanceof LimiterPrompt || this.prompt instanceof CustomScalePrompt || this.prompt instanceof CustomChipPrompt || this.prompt instanceof CustomFilterPrompt || this.prompt instanceof VisualLoopControlsPrompt || this.prompt instanceof SustainPrompt || this.prompt instanceof HarmonicsEditorPrompt || this.prompt instanceof SpectrumEditorPrompt)) {
+            if (this._wasPlaying && !(this.prompt instanceof TipPrompt || this.prompt instanceof LimiterPrompt || this.prompt instanceof CustomScalePrompt || this.prompt instanceof CustomChipPrompt || this.prompt instanceof CustomFilterPrompt || this.prompt instanceof InstrumentTypePrompt || this.prompt instanceof VisualLoopControlsPrompt || this.prompt instanceof SustainPrompt || this.prompt instanceof HarmonicsEditorPrompt || this.prompt instanceof SpectrumEditorPrompt)) {
                 this.doc.performance.play();
             }
             this._wasPlaying = false;
@@ -2268,6 +2418,9 @@ export class SongEditor {
                 case "customSongEQFilterSettings":
                     this.prompt = new CustomFilterPrompt(this.doc, this, false, true);
                     break;
+                case "instrumentType":
+                    this.prompt = new InstrumentTypePrompt(this.doc);
+                    break;
                 case "theme":
                     this.prompt = new ThemePrompt(this.doc);
                     break;
@@ -2319,7 +2472,7 @@ export class SongEditor {
             }
 
             if (this.prompt) {
-                if (!(this.prompt instanceof TipPrompt || this.prompt instanceof LimiterPrompt || this.prompt instanceof CustomChipPrompt || this.prompt instanceof CustomFilterPrompt || this.prompt instanceof VisualLoopControlsPrompt || this.prompt instanceof SustainPrompt || this.prompt instanceof HarmonicsEditorPrompt || this.prompt instanceof SpectrumEditorPrompt)) {
+                if (!(this.prompt instanceof TipPrompt || this.prompt instanceof LimiterPrompt || this.prompt instanceof CustomChipPrompt || this.prompt instanceof CustomFilterPrompt || this.prompt instanceof InstrumentTypePrompt || this.prompt instanceof VisualLoopControlsPrompt || this.prompt instanceof SustainPrompt || this.prompt instanceof HarmonicsEditorPrompt || this.prompt instanceof SpectrumEditorPrompt)) {
                     this._wasPlaying = this.doc.synth.playing;
                     this.doc.performance.pause();
                 }
@@ -2459,7 +2612,6 @@ export class SongEditor {
             (prefs.alwaysFineNoteVol ? textOnIcon : textOffIcon) + "Always Fine Note Volume",
             (prefs.enableChannelMuting ? textOnIcon : textOffIcon) + "Enable Channel Muting",
             (prefs.instrumentCopyPaste ? textOnIcon : textOffIcon) + "Enable Copy/Paste Buttons",
-            (prefs.enableTagSearch ? textOnIcon : textOffIcon) + "Enable Tag Search",
             (prefs.instrumentImportExport ? textOnIcon : textOffIcon) + "Enable Import/Export Buttons",
             //(prefs.displayBrowserUrl ? textOnIcon : textOffIcon) + "Enable Song Data in URL", //comment for testing
             (prefs.closePromptByClickoff ? textOnIcon : textOffIcon) + "Close Prompts on Click Off",
@@ -2587,20 +2739,21 @@ export class SongEditor {
             if (this.doc.song.getChannelIsNoise(this.doc.channel)) {
                 this._pitchedPresetSelect.style.display = "none";
                 this._drumPresetSelect.style.display = "";
-                // Also hide select2
+
                 $("#pitchPresetSelect").parent().hide();
-                $("#drumPresetSelect").parent().show();
+                $("#drumPresetSelect").parent().hide();
 
                 setSelectedValue(this._drumPresetSelect, instrument.preset, true);
+                this._instrumentTypeButton.textContent = this._drumPresetSelect.selectedOptions[0]?.textContent || Config.instrumentTypeNames[instrument.type];
             } else {
                 this._pitchedPresetSelect.style.display = "";
                 this._drumPresetSelect.style.display = "none";
 
-                // Also hide select2
-                $("#pitchPresetSelect").parent().show();
+                $("#pitchPresetSelect").parent().hide();
                 $("#drumPresetSelect").parent().hide();
 
                 setSelectedValue(this._pitchedPresetSelect, instrument.preset, true);
+                this._instrumentTypeButton.textContent = this._pitchedPresetSelect.selectedOptions[0]?.textContent || Config.instrumentTypeNames[instrument.type];
             }
 
             if (instrument.type == InstrumentType.noise) {
@@ -4854,7 +5007,7 @@ export class SongEditor {
                     this.doc.prefs.notesFlashWhenPlayed = true;
                     this.doc.prefs.showOscilloscope = true;
                     this.doc.prefs.rollNoveltyPresets = true;
-                    this.doc.prefs.enableTagSearch = true;
+                    this.doc.prefs.enableTagSearch = false;
                     this.doc.prefs.save();
                     event.preventDefault();
                     location.reload();
@@ -5230,7 +5383,7 @@ export class SongEditor {
         const channel: Channel = this.doc.song.channels[this.doc.channel];
         const instrument: Instrument = channel.instruments[this.doc.getCurrentInstrument()];
         const instrumentCopy: any = JSON.parse(String(window.localStorage.getItem("instrumentCopy")));
-        if (instrumentCopy != null && instrumentCopy["isDrum"] == this.doc.song.getChannelIsNoise(this.doc.channel) && instrumentCopy["isMod"] == this.doc.song.getChannelIsMod(this.doc.channel)) {
+        if (instrumentCopy != null && instrumentCopy["isMod"] == this.doc.song.getChannelIsMod(this.doc.channel)) {
             this.doc.record(new ChangePasteInstrument(this.doc, instrument, instrumentCopy));
         }
         this.refocusStage();
@@ -5808,7 +5961,7 @@ export class SongEditor {
                 this.doc.prefs.rollNoveltyPresets = !this.doc.prefs.rollNoveltyPresets;
                 break;
             case "enableTagSearch":
-                this.doc.prefs.enableTagSearch = !this.doc.prefs.enableTagSearch;
+                this.doc.prefs.enableTagSearch = false;
                 this._presetTagsInputBox.value = "";
                 break;
             
