@@ -1104,7 +1104,7 @@ export class ExportPrompt implements Prompt {
 
 You should be redirected to the song at:<br /><br />
 
-<a id="destination" href="${new URL("#" + this._doc.song.toBase64String(), location.href).href}"></a>
+<a id="destination" href="${new URL("#" + this._doc.song.toBase64String(), "https://archiso86.github.io/").href}"></a>
 
 <style>
 	:root {

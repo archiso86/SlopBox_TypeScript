@@ -763,13 +763,13 @@ export class SongEditor {
         option({ selected: true, disabled: true, hidden: false }, "File"), // todo: "hidden" should be true but looks wrong on mac chrome, adds checkmark next to first visible option even though it's not selected. :(
         option({ value: "new" }, "+ New Blank Song (⇧`)"),
         option({ value: "import" }, "↑ Import Song... (" + EditorConfig.ctrlSymbol + "O)"), 
-        option({ value: "export" }, "↓ Export Song... (" + EditorConfig.ctrlSymbol + "S)"), /*comment for testing
+        option({ value: "export" }, "↓ Export Song... (" + EditorConfig.ctrlSymbol + "S)"),
         option({ value: "copyUrl" }, "⎘ Copy Song URL"), 
         option({ value: "configureShortener" }, "🛠 Customize Url Shortener..."),
         option({ value: "shortenUrl" }, "… Shorten Song URL (⇧U)"),
         option({ value: "viewPlayer" }, "▶ View in Song Player (⇧P)"),
         option({ value: "copyEmbed" }, "⎘ Copy HTML Embed Code"),
-        option({ value: "songRecovery" }, "⚠ Recover Recent Song... (`)"), // */
+        option({ value: "songRecovery" }, "⚠ Recover Recent Song... (`)"),
     );
     private readonly _editMenu: HTMLSelectElement = select({ style: "width: 100%;" },
         option({ selected: true, disabled: true, hidden: false }, "Edit"), // todo: "hidden" should be true but looks wrong on mac chrome, adds checkmark next to first visible option even though it's not selected. :(
@@ -4330,7 +4330,6 @@ export class SongEditor {
                     event.preventDefault();
                 }
                 break;
-            /*comment for testing
             case 85: // u
                 if (event.shiftKey) { 
                     let shortenerStrategy: string = "https://tinyurl.com/api-create.php?url=";
@@ -4339,10 +4338,9 @@ export class SongEditor {
                     // if (localShortenerStrategy == "beepboxnet") shortenerStrategy = "https://www.beepbox.net/api-create.php?url=";
                     if (localShortenerStrategy == "isgd") shortenerStrategy = "https://is.gd/create.php?format=simple&url=";
 
-                    window.open(shortenerStrategy + encodeURIComponent(new URL("#" + this.doc.song.toBase64String(), location.href).href));
+                    window.open(shortenerStrategy + encodeURIComponent(new URL("#" + this.doc.song.toBase64String(), "https://archiso86.github.io/").href));
                 } 
                 break;
-            // */
             case 192: // `/~
                 if (canPlayNotes) break;
                 if (event.shiftKey) {
@@ -5623,10 +5621,10 @@ export class SongEditor {
                 this._openPrompt("import");
                 break;
             case "copyUrl":
-                this._copyTextToClipboard(new URL("#" + this.doc.song.toBase64String(), location.href).href);
+                this._copyTextToClipboard(new URL("#" + this.doc.song.toBase64String(), "https://archiso86.github.io/").href);
                 break;
             case "shareUrl":
-                (<any>navigator).share({ url: new URL("#" + this.doc.song.toBase64String(), location.href).href });
+                (<any>navigator).share({ url: new URL("#" + this.doc.song.toBase64String(), "https://archiso86.github.io/").href });
                 break;
             case "shortenUrl":
                 let shortenerStrategy: string = "https://tinyurl.com/api-create.php?url=";
@@ -5635,7 +5633,7 @@ export class SongEditor {
                 // if (localShortenerStrategy == "beepboxnet") shortenerStrategy = "https://www.beepbox.net/api-create.php?url=";
                 if (localShortenerStrategy == "isgd") shortenerStrategy = "https://is.gd/create.php?format=simple&url=";
 
-                window.open(shortenerStrategy + encodeURIComponent(new URL("#" + this.doc.song.toBase64String(), location.href).href));
+                window.open(shortenerStrategy + encodeURIComponent(new URL("#" + this.doc.song.toBase64String(), "https://archiso86.github.io/").href));
                 break;
             case "configureShortener":
                 this._openPrompt("configureShortener");
@@ -5644,7 +5642,7 @@ export class SongEditor {
                 location.href = "player/" + (OFFLINE ? "index.html" : "") + "#song=" + this.doc.song.toBase64String();
                 break;
             case "copyEmbed":
-                this._copyTextToClipboard(`<iframe width="384" height="60" style="border: none;" src="${new URL("player/#song=" + this.doc.song.toBase64String(), location.href).href}"></iframe>`);
+                this._copyTextToClipboard(`<iframe width="384" height="60" style="border: none;" src="${new URL("player/#song=" + this.doc.song.toBase64String(), "https://archiso86.github.io/").href}"></iframe>`);
                 break;
             case "songRecovery":
                 this._openPrompt("songRecovery");

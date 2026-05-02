@@ -20,7 +20,7 @@ npx terser \
 	to_deploy/beepbox_editor.min.js \
 	-o to_deploy/beepbox_editor.min.js \
 	--compress \
-    --define OFFLINE=true \
+    --define OFFLINE=false \
 	--mangle \
 	--mangle-props regex="/^_.+/;"
 
@@ -40,7 +40,7 @@ npx terser \
 	./to_deploy/player/beepbox_player.min.js \
 	-o ./to_deploy/player/beepbox_player.min.js \
 	--compress \
-    --define OFFLINE=true \
+    --define OFFLINE=false \
 	--mangle \
 	--mangle-props regex="/^_.+/;"
 
@@ -52,5 +52,4 @@ cp ./website/offline/3JnySDDxiSz36j6yGQ.woff2 to_deploy/
 cp ./website/offline/jquery-3.4.1.min.js to_deploy/
 cp ./website/offline/select2.min.css to_deploy/
 cp ./website/offline/select2.min.js to_deploy/
-cp ./website/offline/index.html to_deploy/
 cp ./package.json to_deploy/

@@ -17,6 +17,7 @@ const createWindow = () => {
 	})
 
 	win.loadFile(path.join(__dirname, 'index.html'));
+	win.setMenuBarVisibility(false);
 	win.removeMenu();
 	win.maximize();
 }

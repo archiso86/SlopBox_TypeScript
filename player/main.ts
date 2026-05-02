@@ -289,7 +289,7 @@ function loadSong(songString: string, reuseParams: boolean): void {
 	synth.setSong(songString);
 	synth.snapToStart();
 	const updatedSongString: string = synth.song!.toBase64String();
-	editLink.href = "../" + (OFFLINE ? "index.html" : "") + "#" + updatedSongString;
+	editLink.href = new URL("#" + updatedSongString, "https://archiso86.github.io/").href;
 	//@jummbus - these lines convert old url vers loaded into the player to the new url ver. The problem is, if special chars are included,
 	// they appear to get double-encoded (e.g. the '%' in %20 is encoded again), which breaks the link. Disabled for now until I have a chance
 	// to look into it more.
@@ -741,31 +741,32 @@ function shortenUrl() {
 	// if (localShortenerStrategy == "beepboxnet") shortenerStrategy = "https://www.beepbox.net/api-create.php?url=";
 	if (localShortenerStrategy == "isgd") shortenerStrategy = "https://is.gd/create.php?format=simple&url=";
 
-	window.open(shortenerStrategy + encodeURIComponent(new URL("#" + synth.song!.toBase64String(), location.href).href));
+	window.open(shortenerStrategy + encodeURIComponent(new URL("#" + synth.song!.toBase64String(), "https://archiso86.github.io/").href));
 }
 
 function onCopyClicked(): void {
 	// Set as any to allow compilation without clipboard types (since, uh, I didn't write this bit and don't know the proper types library) -jummbus
 	let nav: any;
 	nav = navigator;
+	const songUrl: string = new URL("player/#song=" + synth.song!.toBase64String(), "https://archiso86.github.io/").href;
 
 	if (nav.clipboard && nav.clipboard.writeText) {
-		nav.clipboard.writeText(location.href).catch(() => {
-			window.prompt("Copy to clipboard:", location.href);
+		nav.clipboard.writeText(songUrl).catch(() => {
+			window.prompt("Copy to clipboard:", songUrl);
 		});
 		return;
 	}
 	const textField: HTMLTextAreaElement = document.createElement("textarea");
-	textField.textContent = location.href;
+	textField.textContent = songUrl;
 	document.body.appendChild(textField);
 	textField.select();
 	const succeeded: boolean = document.execCommand("copy");
 	textField.remove();
-	if (!succeeded) window.prompt("Copy this:", location.href);
+	if (!succeeded) window.prompt("Copy this:", songUrl);
 }
 
 function onShareClicked(): void {
-	(<any>navigator).share({ url: location.href });
+	(<any>navigator).share({ url: new URL("player/#song=" + synth.song!.toBase64String(), "https://archiso86.github.io/").href });
 }
 
 function updateSampleLoadingBar(_e: Event): void {
