@@ -28,7 +28,7 @@ jobs:
         run: npm ci
 
       - name: Build deploy files
-        run: npm run build-offline
+        run: npm run build-editor
 
       - name: Deploy to archiso86.github.io
         uses: peaceiris/actions-gh-pages@v4
