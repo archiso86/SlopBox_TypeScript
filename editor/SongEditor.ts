@@ -175,18 +175,22 @@ function setSelectedValue(menu: HTMLSelectElement, value: number, isSelect2: boo
     }
 }
 
+type InstrumentTypePromptOption = { value: string, label: string };
+type InstrumentTypePromptGroup = { label: string, options: InstrumentTypePromptOption[] };
+
 class InstrumentTypePrompt implements Prompt {
+    private static _groups: InstrumentTypePromptGroup[] | null = null;
     private readonly _searchInput: HTMLInputElement = input({ type: "text", placeholder: "Search", style: "width: 100%; box-sizing: border-box; margin-bottom: 0.6em;" });
-    private readonly _categoryContainer: HTMLDivElement = div({ style: "width: 12em; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.25em; overflow-y: auto; padding-right: 0.5em;" });
-    private readonly _optionContainer: HTMLDivElement = div({ style: "flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.45em;" });
+    private readonly _categoryContainer: HTMLDivElement = div({ style: "width: 12em; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.25em; overflow-y: auto; overflow-x: hidden; padding-right: 0.5em;" });
+    private readonly _optionContainer: HTMLDivElement = div({ style: "flex: 1; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 0.45em;" });
     private readonly _cancelButton: HTMLButtonElement = button({ class: "cancelButton" });
     private readonly _optionButtons: HTMLButtonElement[] = [];
-    private readonly _groups: { label: string, options: { value: string, label: string }[] }[];
+    private readonly _groups: InstrumentTypePromptGroup[];
     private _selectedCategory: string | null = null;
     public readonly container: HTMLDivElement;
 
     constructor(private _doc: SongDocument) {
-        this._groups = this._collectGroups();
+        this._groups = InstrumentTypePrompt._groups || (InstrumentTypePrompt._groups = this._collectGroups());
         this.container = div({ class: "prompt noSelection", style: "width: 760px; max-width: 92vw;" },
             h2("Instrument Type"),
             this._searchInput,
@@ -203,27 +207,61 @@ class InstrumentTypePrompt implements Prompt {
         setTimeout(() => this._searchInput.focus());
     }
 
-    private _collectGroups(): { label: string, options: { value: string, label: string }[] }[] {
-        const isNoise: boolean = this._doc.song.getChannelIsNoise(this._doc.channel);
-        const menu: HTMLSelectElement = buildPresetOptions(isNoise, "");
-        const groups: { label: string, options: { value: string, label: string }[] }[] = [];
+    public prepareToOpen(): void {
+        setTimeout(() => this._searchInput.focus());
+    }
 
-        for (const child of Array.from(menu.children)) {
-            if (child instanceof HTMLOptGroupElement) {
-                const options: { value: string, label: string }[] = Array.from(child.children).map((optionElement: Element) => {
-                    const presetOption: HTMLOptionElement = <HTMLOptionElement>optionElement;
-                    return { value: presetOption.value, label: presetOption.textContent || "" };
-                });
-                groups.push({ label: child.label.replace(" ▾", ""), options: options });
+    private _collectGroups(): InstrumentTypePromptGroup[] {
+        const randomGroup: InstrumentTypePromptGroup = {
+            label: "Randomize",
+            options: [
+                { value: "randomPreset", label: "Random Preset (R)" },
+                { value: "randomGenerated", label: "Random Generated (Shift + R)" },
+            ],
+        };
+        const categoryGroups: InstrumentTypePromptGroup[] = [];
+        let firstCategoryIndex: number | null = null;
+        let customSampleCategoryIndex: number | null = null;
+
+        for (let categoryIndex: number = 1; categoryIndex < EditorConfig.presetCategories.length; categoryIndex++) {
+            const category: PresetCategory = EditorConfig.presetCategories[categoryIndex];
+            const options: InstrumentTypePromptOption[] = category.presets.map((preset: Preset, presetIndex: number) => {
+                return { value: String((categoryIndex << 12) + presetIndex), label: preset.name };
+            });
+
+            if (options.length == 0) continue;
+
+            if (category.name == "String Presets") {
+                const violin2: InstrumentTypePromptOption = options.splice(11, 1)[0];
+                options.splice(1, 0, violin2);
+            } else if (category.name == "Flute Presets") {
+                const flute2: InstrumentTypePromptOption = options.splice(11, 1)[0];
+                options.splice(1, 0, flute2);
+            } else if (category.name == "Keyboard Presets") {
+                const grandPiano2: InstrumentTypePromptOption = options.splice(9, 1)[0];
+                const grandPiano3: InstrumentTypePromptOption = options.splice(9, 1)[0];
+                options.splice(1, 0, grandPiano3);
+                options.splice(1, 0, grandPiano2);
             }
+
+            if (categoryIndex == 1) firstCategoryIndex = categoryGroups.length;
+            if (category.name == "Custom Sample Presets") customSampleCategoryIndex = categoryGroups.length;
+
+            categoryGroups.push({ label: category.name, options: options });
         }
-        return groups;
+
+        if (firstCategoryIndex != null && customSampleCategoryIndex != null) {
+            const customSampleGroup: InstrumentTypePromptGroup = categoryGroups.splice(customSampleCategoryIndex, 1)[0];
+            categoryGroups.splice(firstCategoryIndex, 0, customSampleGroup);
+        }
+
+        return [randomGroup].concat(categoryGroups);
     }
 
     private _render(): void {
         const query: string = this._searchInput.value.trim().toLowerCase();
         const searched: boolean = query.length > 0;
-        const visibleGroups: { label: string, options: { value: string, label: string }[] }[] = this._groups.filter(group =>
+        const visibleGroups: InstrumentTypePromptGroup[] = this._groups.filter(group =>
             !searched ||
             group.label.toLowerCase().includes(query) ||
             group.options.some(preset => preset.label.toLowerCase().includes(query))
@@ -238,12 +276,12 @@ class InstrumentTypePrompt implements Prompt {
             this._categoryContainer.appendChild(this._buildCategoryButton(group.label, group.label));
         }
 
-        const groupsToRender: { label: string, options: { value: string, label: string }[] }[] = (searched || this._selectedCategory == null)
+        const groupsToRender: InstrumentTypePromptGroup[] = (searched || this._selectedCategory == null)
             ? visibleGroups
             : this._groups.filter(group => group.label == this._selectedCategory);
 
         for (const group of groupsToRender) {
-            const options: { value: string, label: string }[] = searched && !group.label.toLowerCase().includes(query)
+            const options: InstrumentTypePromptOption[] = searched && !group.label.toLowerCase().includes(query)
                 ? group.options.filter(preset => preset.label.toLowerCase().includes(query))
                 : group.options;
 
@@ -312,16 +350,11 @@ class InstrumentTypePrompt implements Prompt {
     }
 
     private _close = (): void => {
-        this._doc.undo();
+        this._doc.closePrompt();
     }
 
     public cleanUp = (): void => {
-        this._searchInput.removeEventListener("input", this._whenSearchChanged);
-        this._cancelButton.removeEventListener("click", this._close);
-        this.container.removeEventListener("keydown", this._whenKeyPressed);
-        for (const optionButton of this._optionButtons) {
-            optionButton.removeEventListener("click", this._choosePreset);
-        }
+        // Cached by SongEditor so repeated opens keep DOM and listeners warm.
     }
 
     private _whenSearchChanged = (): void => {
@@ -882,6 +915,7 @@ class CustomAlgorythmCanvas {
 
 export class SongEditor {
     public prompt: Prompt | null = null;
+    private _instrumentTypePrompt: InstrumentTypePrompt | null = null;
 
     public doc: SongDocument = new SongDocument();
 
@@ -1656,6 +1690,7 @@ export class SongEditor {
         window.addEventListener("resize", this.whenUpdated);
         window.requestAnimationFrame(this.updatePlayButton);
         window.requestAnimationFrame(this._animate);
+        this._installMediaSessionHandlers();
 
         if (!("share" in navigator)) {
             const shareUrlOption: Element | null = this._fileMenu.querySelector("[value='shareUrl']");
@@ -1960,7 +1995,7 @@ export class SongEditor {
             if (this.doc.prefs.closePromptByClickoff === true) {
                 if (this.prompt != null && this.prompt.gotMouseUp === true) return;
                 if (event.target == this._promptContainer) {
-                    this.doc.undo();
+                    this.doc.closePrompt();
                 }
             }
         });
@@ -2419,7 +2454,12 @@ export class SongEditor {
                     this.prompt = new CustomFilterPrompt(this.doc, this, false, true);
                     break;
                 case "instrumentType":
-                    this.prompt = new InstrumentTypePrompt(this.doc);
+                    if (this._instrumentTypePrompt == null) {
+                        this._instrumentTypePrompt = new InstrumentTypePrompt(this.doc);
+                    } else {
+                        this._instrumentTypePrompt.prepareToOpen();
+                    }
+                    this.prompt = this._instrumentTypePrompt;
                     break;
                 case "theme":
                     this.prompt = new ThemePrompt(this.doc);
@@ -4159,6 +4199,30 @@ export class SongEditor {
         }
     }
 
+    private _installMediaSessionHandlers(): void {
+        if (!("mediaSession" in navigator)) return;
+
+        navigator.mediaSession.setActionHandler("play", () => {
+            if (!this.doc.synth.playing && !this.doc.synth.recording) this.togglePlay();
+        });
+        navigator.mediaSession.setActionHandler("pause", () => {
+            if (this.doc.synth.recording) {
+                this._toggleRecord();
+            } else if (this.doc.synth.playing) {
+                this.togglePlay();
+            }
+        });
+        navigator.mediaSession.setActionHandler("stop", () => {
+            if (this.doc.synth.recording) {
+                this._toggleRecord();
+            } else if (this.doc.synth.playing) {
+                this.togglePlay();
+            }
+            this.doc.goBackToStart();
+        });
+        navigator.mediaSession.playbackState = "paused";
+    }
+
     public updatePlayButton = (): void => {
         if (this._renderedIsPlaying != this.doc.synth.playing || this._renderedIsRecording != this.doc.synth.recording || this._renderedShowRecordButton != this.doc.prefs.showRecordButton || this._renderedCtrlHeld != this._ctrlHeld) {
             this._renderedIsPlaying = this.doc.synth.playing;
@@ -4217,6 +4281,10 @@ export class SongEditor {
                 this._recordButton.style.display = "";
             } else {
                 this._playButton.style.display = "";
+            }
+
+            if ("mediaSession" in navigator) {
+                navigator.mediaSession.playbackState = this.doc.synth.playing ? "playing" : "paused";
             }
         }
         window.requestAnimationFrame(this.updatePlayButton);
@@ -4353,7 +4421,7 @@ export class SongEditor {
             }
             if (event.keyCode == 27) { // ESC key
                 // close prompt.
-                this.doc.undo();
+                this.doc.closePrompt();
             }
             return;
         }

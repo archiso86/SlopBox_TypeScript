@@ -399,6 +399,15 @@ export class SongDocument {
         this._pushState(state, hash);
     }
 
+    public closePrompt(): void {
+        if (this.prompt == null) return;
+        const state: HistoryState | null = this._getHistoryState();
+        if (state == null) throw new Error("History state is null.");
+        this.prompt = null;
+        this._replaceState({ ...state, prompt: null }, this.song.toBase64String());
+        this.notifier.changed();
+    }
+
     public undo(): void {
         const state: HistoryState | null = this._getHistoryState();
         if (state == null || state.canUndo) this._back();
