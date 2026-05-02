@@ -2244,6 +2244,9 @@ export class PatternEditor {
                         const sizeRatio: number = (bendPart - prevPin.time) / (nextPin.time - prevPin.time);
                         bendSize = Math.round(prevPin.size * (1.0 - sizeRatio) + nextPin.size * sizeRatio + dragSign * dragCounts);
                         // If not in fine control mode, round to 0~2~4~6 (normal 4 settings)
+                        if (!this.controlMode && !this._doc.prefs.alwaysFineNoteVol && !this._doc.song.getChannelIsMod(this._doc.channel)) {
+                            bendSize = Math.floor(bendSize / 2) * 2;
+                        }
                         if (bendSize < 0) bendSize = 0;
                         if (bendSize > cap) bendSize = cap;
                         bendInterval = this._snapToPitch(prevPin.interval * (1.0 - sizeRatio) + nextPin.interval * sizeRatio + this._cursor.curNote.pitches[0], 0, this._getMaxPitch()) - this._cursor.curNote.pitches[0];

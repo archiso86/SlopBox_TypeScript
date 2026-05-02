@@ -462,7 +462,7 @@ export class SongDocument {
 
     public getBarWidth(): number {
         // Bugfix: In wide fullscreen, the 32 pixel display doesn't work as the trackEditor is still horizontally constrained
-        return (!this.getMobileLayout() && (!this.getFullScreen() || this.prefs.layout == "wide")) ? 30 : 32;
+        return (!this.getMobileLayout() && this.prefs.enableChannelMuting && (!this.getFullScreen() || this.prefs.layout == "wide")) ? 30 : 32;
     }
 
     public getChannelHeight(): number {

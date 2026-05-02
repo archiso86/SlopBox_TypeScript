@@ -3556,7 +3556,7 @@ export class Song {
         this.key = 0;
         this.octave = 0;
         this.loopStart = 0;
-        this.loopLength = 16;
+        this.loopLength = 4;
         this.tempo = 150; //Default tempo returned to 150 for consistency with BeepBox and JummBox
         this.reverb = 0;
         this.beatsPerBar = 8;
@@ -3604,7 +3604,7 @@ export class Song {
                 channel.instruments.length = Config.instrumentCountMin;
 
                 for (let bar: number = 0; bar < this.barCount; bar++) {
-                    channel.bars[bar] = 0;
+                    channel.bars[bar] = bar < 4 ? 1 : 0;
                 }
                 channel.bars.length = this.barCount;
             }
