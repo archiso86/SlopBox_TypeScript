@@ -33,7 +33,7 @@ jobs:
       - name: Deploy to archiso86.github.io
         uses: peaceiris/actions-gh-pages@v4
         with:
-          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          personal_token: ${{ secrets.ACTIONS_DEPLOY_TOKEN }}
           external_repository: archiso86/archiso86.github.io
           publish_branch: main
           publish_dir: ./to_deploy
