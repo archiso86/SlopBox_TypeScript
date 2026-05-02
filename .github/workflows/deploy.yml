@@ -33,6 +33,7 @@ jobs:
           npm run build
           npm run deploy-files
           test -f ./to_deploy/index.html
+          ! grep -q "offline version" ./to_deploy/index.html
           find ./to_deploy -maxdepth 2 -type f | sort | head -100
 
       - name: Deploy to archiso86.github.io
