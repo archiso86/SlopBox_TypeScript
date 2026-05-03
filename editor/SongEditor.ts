@@ -95,9 +95,11 @@ function buildPresetOptions(isNoise: boolean, idSet: string): HTMLSelectElement 
         InstrumentType.noise,
         InstrumentType.drumset,
     ];
+    const customTypeGroup: HTMLElement = optgroup({ label: "Types ▾" });
     for (const instrumentType of customTypes) {
-        menu.appendChild(option({ value: instrumentType }, EditorConfig.instrumentToPreset(instrumentType)!.name));
+        customTypeGroup.appendChild(option({ value: instrumentType }, EditorConfig.instrumentToPreset(instrumentType)!.name));
     }
+    menu.appendChild(customTypeGroup);
 
     // TODO - When you port over the Dogebox2 import/export buttons be sure to uncomment these
     const randomGroup: HTMLElement = optgroup({ label: "Randomize ▾" });
@@ -199,7 +201,6 @@ class InstrumentTypePrompt implements Prompt {
         this._render();
         this._searchInput.addEventListener("input", this._whenSearchChanged);
         this._cancelButton.addEventListener("click", this._close);
-        this.container.addEventListener("keydown", this._whenKeyPressed);
         setTimeout(() => this._searchInput.focus());
     }
 
@@ -318,7 +319,6 @@ class InstrumentTypePrompt implements Prompt {
     public cleanUp = (): void => {
         this._searchInput.removeEventListener("input", this._whenSearchChanged);
         this._cancelButton.removeEventListener("click", this._close);
-        this.container.removeEventListener("keydown", this._whenKeyPressed);
         for (const optionButton of this._optionButtons) {
             optionButton.removeEventListener("click", this._choosePreset);
         }
@@ -329,11 +329,6 @@ class InstrumentTypePrompt implements Prompt {
         this._render();
     }
 
-    private _whenKeyPressed = (event: KeyboardEvent): void => {
-        if (event.keyCode == 27) {
-            this._close();
-        }
-    }
 }
 
 class CustomChipCanvas {
