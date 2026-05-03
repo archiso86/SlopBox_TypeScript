@@ -242,6 +242,24 @@ export class PatternEditor {
         return this._doc.song.getChannelIsMod(this._doc.channel) ? Config.modCount - 1 : (this._doc.song.getChannelIsNoise(this._doc.channel) ? Config.drumCount - 1 : Config.maxPitch);
     }
 
+    private _getVisualPitchOffset(): number {
+        return this._doc.song.getChannelIsNoise(this._doc.channel) || this._doc.song.getChannelIsMod(this._doc.channel)
+            ? 0
+            : Config.keys[this._doc.song.key].basePitch - Config.keys[this._doc.song.visualKey].basePitch;
+    }
+
+    private _storedToVisualPitch(pitch: number): number {
+        return pitch + this._getVisualPitchOffset();
+    }
+
+    private _visualToStoredPitch(pitch: number): number {
+        return pitch - this._getVisualPitchOffset();
+    }
+
+    private _pitchModulo(pitch: number): number {
+        return (pitch % Config.pitchesPerOctave + Config.pitchesPerOctave) % Config.pitchesPerOctave;
+    }
+
     private _validateModDragLabelInput = (event: Event): void => {
         const label: HTMLDivElement = <HTMLDivElement>event.target;
 
@@ -593,23 +611,24 @@ export class PatternEditor {
     }
 
     private _findMousePitch(pixelY: number): number {
-        return Math.max(0, Math.min(this._pitchCount - 1, this._pitchCount - (pixelY / this._pitchHeight))) + this._octaveOffset;
+        const visualPitch: number = Math.max(0, Math.min(this._pitchCount - 1, this._pitchCount - (pixelY / this._pitchHeight))) + this._octaveOffset;
+        return Math.max(0, Math.min(this._getMaxPitch(), this._visualToStoredPitch(visualPitch)));
     }
 
     private _snapToPitch(guess: number, min: number, max: number): number {
         if (guess < min) guess = min;
         if (guess > max) guess = max;
         const scale: ReadonlyArray<boolean> = this._doc.prefs.notesOutsideScale ? Config.scales.dictionary["Free"].flags : this._doc.song.scale == Config.scales.dictionary["Custom"].index ? this._doc.song.scaleCustom : Config.scales[this._doc.song.scale].flags;
-        if (scale[Math.floor(guess) % Config.pitchesPerOctave] || this._doc.song.getChannelIsNoise(this._doc.channel) || this._doc.song.getChannelIsMod(this._doc.channel)) {
+        if (scale[this._pitchModulo(Math.floor(this._storedToVisualPitch(guess)))] || this._doc.song.getChannelIsNoise(this._doc.channel) || this._doc.song.getChannelIsMod(this._doc.channel)) {
 
             return Math.floor(guess);
         } else {
             let topPitch: number = Math.floor(guess) + 1;
             let bottomPitch: number = Math.floor(guess) - 1;
-            while (!scale[topPitch % Config.pitchesPerOctave]) {
+            while (!scale[this._pitchModulo(this._storedToVisualPitch(topPitch))]) {
                 topPitch++;
             }
-            while (!scale[(bottomPitch) % Config.pitchesPerOctave]) {
+            while (!scale[this._pitchModulo(this._storedToVisualPitch(bottomPitch))]) {
                 bottomPitch--;
             }
             if (topPitch > max) {
@@ -623,10 +642,10 @@ export class PatternEditor {
             }
             let topRange: number = topPitch;
             let bottomRange: number = bottomPitch + 1;
-            if (topPitch % Config.pitchesPerOctave == 0 || topPitch % Config.pitchesPerOctave == 7) {
+            if (this._pitchModulo(this._storedToVisualPitch(topPitch)) == 0 || this._pitchModulo(this._storedToVisualPitch(topPitch)) == 7) {
                 topRange -= 0.5;
             }
-            if (bottomPitch % Config.pitchesPerOctave == 0 || bottomPitch % Config.pitchesPerOctave == 7) {
+            if (this._pitchModulo(this._storedToVisualPitch(bottomPitch)) == 0 || this._pitchModulo(this._storedToVisualPitch(bottomPitch)) == 7) {
                 bottomRange += 0.5;
             }
             return guess - bottomRange > topRange - guess ? topPitch : bottomPitch;
@@ -2448,7 +2467,7 @@ export class PatternEditor {
                 this._svgPreview.setAttribute("visibility", "visible");
 
                 const x: number = this._partWidth * this._dragTime;
-                const y: number = this._pitchToPixelHeight(this._dragPitch - this._octaveOffset);
+                const y: number = this._pitchToPixelHeight(this._storedToVisualPitch(this._dragPitch) - this._octaveOffset);
                 const radius: number = (this._pitchHeight - this._pitchBorder) / 2;
                 const width: number = 80;
                 const height: number = 60;
@@ -2708,8 +2727,8 @@ export class PatternEditor {
                             const lowerB: number = rangeB[0];
                             const upperB: number = rangeB[1];
 
-                            const rectY0: number = Math.min(height, Math.max(0, this._pitchToPixelHeight((lowerB - 1) - this._octaveOffset) - this._pitchHeight / 2));
-                            const rectY1: number = Math.min(height, Math.max(0, this._pitchToPixelHeight((upperA + 1) - this._octaveOffset) + this._pitchHeight / 2));
+                            const rectY0: number = Math.min(height, Math.max(0, this._pitchToPixelHeight(this._storedToVisualPitch(lowerB - 1) - this._octaveOffset) - this._pitchHeight / 2));
+                            const rectY1: number = Math.min(height, Math.max(0, this._pitchToPixelHeight(this._storedToVisualPitch(upperA + 1) - this._octaveOffset) + this._pitchHeight / 2));
 
                             const rectIsVisible: boolean = (
                                 (
@@ -2734,7 +2753,7 @@ export class PatternEditor {
 
                         // Draw rectangles at the edges.
                         const topY0: number = 0;
-                        const topY1: number = Math.min(height, Math.max(0, this._pitchToPixelHeight(this._renderedNoteRangeHighestNoteLimit - this._octaveOffset) - this._pitchHeight / 2));
+                        const topY1: number = Math.min(height, Math.max(0, this._pitchToPixelHeight(this._storedToVisualPitch(this._renderedNoteRangeHighestNoteLimit) - this._octaveOffset) - this._pitchHeight / 2));
 
                         const topIsVisible: boolean = (
                             this._renderedNoteRangeHighestNoteLimit != -1
@@ -2751,7 +2770,7 @@ export class PatternEditor {
                             );
                         }
 
-                        const bottomY0: number = Math.min(height, Math.max(0, this._pitchToPixelHeight(this._renderedNoteRangeLowestNoteLimit - this._octaveOffset) + this._pitchHeight / 2));
+                        const bottomY0: number = Math.min(height, Math.max(0, this._pitchToPixelHeight(this._storedToVisualPitch(this._renderedNoteRangeLowestNoteLimit) - this._octaveOffset) + this._pitchHeight / 2));
                         const bottomY1: number = height;
 
                         const bottomIsVisible: boolean = (
@@ -3022,13 +3041,14 @@ export class PatternEditor {
                     if (note.continuesLastPattern) {
                         const arrowHeight: number = Math.min(this._pitchHeight, 20);
                         let arrowPath: string;
-                        arrowPath = "M " + prettyNumber(this._partWidth * note.start + indicatorOffset) + " " + prettyNumber(this._pitchToPixelHeight(pitch - this._octaveOffset) - 0.1 * arrowHeight);
-                        arrowPath += "L " + prettyNumber(this._partWidth * note.start + indicatorOffset) + " " + prettyNumber(this._pitchToPixelHeight(pitch - this._octaveOffset) + 0.1 * arrowHeight);
-                        arrowPath += "L " + prettyNumber(this._partWidth * note.start + indicatorOffset + 4) + " " + prettyNumber(this._pitchToPixelHeight(pitch - this._octaveOffset) + 0.1 * arrowHeight);
-                        arrowPath += "L " + prettyNumber(this._partWidth * note.start + indicatorOffset + 4) + " " + prettyNumber(this._pitchToPixelHeight(pitch - this._octaveOffset) + 0.3 * arrowHeight);
-                        arrowPath += "L " + prettyNumber(this._partWidth * note.start + indicatorOffset + 12) + " " + prettyNumber(this._pitchToPixelHeight(pitch - this._octaveOffset));
-                        arrowPath += "L " + prettyNumber(this._partWidth * note.start + indicatorOffset + 4) + " " + prettyNumber(this._pitchToPixelHeight(pitch - this._octaveOffset) - 0.3 * arrowHeight);
-                        arrowPath += "L " + prettyNumber(this._partWidth * note.start + indicatorOffset + 4) + " " + prettyNumber(this._pitchToPixelHeight(pitch - this._octaveOffset) - 0.1 * arrowHeight);
+                        const visualPitch: number = this._storedToVisualPitch(pitch);
+                        arrowPath = "M " + prettyNumber(this._partWidth * note.start + indicatorOffset) + " " + prettyNumber(this._pitchToPixelHeight(visualPitch - this._octaveOffset) - 0.1 * arrowHeight);
+                        arrowPath += "L " + prettyNumber(this._partWidth * note.start + indicatorOffset) + " " + prettyNumber(this._pitchToPixelHeight(visualPitch - this._octaveOffset) + 0.1 * arrowHeight);
+                        arrowPath += "L " + prettyNumber(this._partWidth * note.start + indicatorOffset + 4) + " " + prettyNumber(this._pitchToPixelHeight(visualPitch - this._octaveOffset) + 0.1 * arrowHeight);
+                        arrowPath += "L " + prettyNumber(this._partWidth * note.start + indicatorOffset + 4) + " " + prettyNumber(this._pitchToPixelHeight(visualPitch - this._octaveOffset) + 0.3 * arrowHeight);
+                        arrowPath += "L " + prettyNumber(this._partWidth * note.start + indicatorOffset + 12) + " " + prettyNumber(this._pitchToPixelHeight(visualPitch - this._octaveOffset));
+                        arrowPath += "L " + prettyNumber(this._partWidth * note.start + indicatorOffset + 4) + " " + prettyNumber(this._pitchToPixelHeight(visualPitch - this._octaveOffset) - 0.3 * arrowHeight);
+                        arrowPath += "L " + prettyNumber(this._partWidth * note.start + indicatorOffset + 4) + " " + prettyNumber(this._pitchToPixelHeight(visualPitch - this._octaveOffset) - 0.1 * arrowHeight);
                         const arrow: SVGPathElement = SVG.path();
                         arrow.setAttribute("d", arrowPath);
                         arrow.setAttribute("fill", ColorConfig.invertedText);
@@ -3040,7 +3060,7 @@ export class PatternEditor {
                         if (displayNumberedChords) {
                             const oscillatorLabel: SVGTextElement = SVG.text();
                             oscillatorLabel.setAttribute("x", "" + prettyNumber(this._partWidth * note.start + indicatorOffset));
-                            oscillatorLabel.setAttribute("y", "" + prettyNumber(this._pitchToPixelHeight(pitch - this._octaveOffset)));
+                            oscillatorLabel.setAttribute("y", "" + prettyNumber(this._pitchToPixelHeight(this._storedToVisualPitch(pitch) - this._octaveOffset)));
                             oscillatorLabel.setAttribute("width", "30");
                             oscillatorLabel.setAttribute("fill", ColorConfig.invertedText);
                             oscillatorLabel.setAttribute("text-anchor", "start");
@@ -3081,6 +3101,7 @@ export class PatternEditor {
     }
 
     private _drawNote(svgElement: SVGPathElement, pitch: number, start: number, pins: NotePin[], radius: number, showSize: boolean, offset: number): void {
+        pitch = this._storedToVisualPitch(pitch);
         const totalWidth: number = this._partWidth * (pins[pins.length - 1].time + pins[0].time);
         const endOffset: number = 0.5 * Math.min(2, totalWidth - 1);
 

@@ -243,7 +243,7 @@ const enum SongTagCode {
     arpeggioSpeed = CharCode.G, // added in JummBox URL version 3 for arpeggioSpeed, DEPRECATED
     harmonics = CharCode.H, // added in BeepBox URL version 7
     stringSustain = CharCode.I, // added in BeepBox URL version 9
-    //	                    = CharCode.J,
+    visualKey = CharCode.J,
     //	                    = CharCode.K,
     pan = CharCode.L, // added between 8 and 9, DEPRECATED
     customChipWave = CharCode.M, // added in JummBox URL version 1(?) for customChipWave
@@ -3282,7 +3282,7 @@ export class Song {
     private static readonly _oldestSlarmoosBoxVersion: number = 1;
     private static readonly _latestSlarmoosBoxVersion: number = 5;
     private static readonly _oldestJukeBoxVersion: number = 1;
-    private static readonly _latestJukeBoxVersion: number = 4;
+    private static readonly _latestJukeBoxVersion: number = 5;
     // One-character variant detection at the start of URL to distinguish variants such as JummBox, Or Goldbox. "j" and "g" respectively
     //also "u" is ultrabox lol
     // private static readonly _variant = 0x73; //"S" - Slarmoo's Box
@@ -3292,6 +3292,7 @@ export class Song {
     public scale: number;
     public scaleCustom: boolean[] = [];
     public key: number;
+    public visualKey: number;
     public octave: number;
     public tempo: number;
     public reverb: number;
@@ -3554,6 +3555,7 @@ export class Song {
         //this.scaleCustom = [true, false, true, true, false, false, false, true, true, false, true, true];
         //this.scaleCustom = [true, false, false, false, false, false, false, false, false, false, false, false];
         this.key = 0;
+        this.visualKey = this.key;
         this.octave = 0;
         this.loopStart = 0;
         this.loopLength = 4;
@@ -3638,6 +3640,7 @@ export class Song {
             }
         }
         buffer.push(SongTagCode.key, base64IntToCharCode[this.key], base64IntToCharCode[this.octave - Config.octaveMin]);
+        buffer.push(SongTagCode.visualKey, base64IntToCharCode[this.visualKey]);
         buffer.push(SongTagCode.loopStart, base64IntToCharCode[this.loopStart >> 6], base64IntToCharCode[this.loopStart & 0x3f]);
         buffer.push(SongTagCode.loopEnd, base64IntToCharCode[(this.loopLength - 1) >> 6], base64IntToCharCode[(this.loopLength - 1) & 0x3f]);
         buffer.push(SongTagCode.tempo, base64IntToCharCode[this.tempo >> 6], base64IntToCharCode[this.tempo & 0x3F]);
@@ -4557,6 +4560,7 @@ export class Song {
         let command: number;
         let useSlowerArpSpeed: boolean = false;
         let useFastTwoNoteArp: boolean = false;
+        let visualKeyLoaded: boolean = false;
         while (charIndex < compressed.length) switch (command = compressed.charCodeAt(charIndex++)) {
             case SongTagCode.songTitle: {
                 // Length of song name string
@@ -4621,6 +4625,10 @@ export class Song {
                     this.key = clamp(0, Config.keys.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
                     this.octave = clamp(Config.octaveMin, Config.octaveMax + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)] + Config.octaveMin);
                 }
+            } break;
+            case SongTagCode.visualKey: {
+                this.visualKey = clamp(0, Config.keys.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                visualKeyLoaded = true;
             } break;
             case SongTagCode.loopStart: {
                 if (beforeFive && fromBeepBox) {
@@ -6650,6 +6658,8 @@ export class Song {
             } break;
         }
 
+        if (!visualKeyLoaded) this.visualKey = this.key;
+
         if (Config.willReloadForCustomSamples) {
             window.location.hash = this.toBase64String();
             setTimeout(() => { location.reload(); }, 50);
@@ -6995,6 +7005,7 @@ export class Song {
             "scale": Config.scales[this.scale].name,
             "customScale": this.scaleCustom,
             "key": Config.keys[this.key].name,
+            "visualKey": Config.keys[this.visualKey].name,
             "keyOctave": this.octave,
             "introBars": this.loopStart,
             "loopBars": this.loopLength,
@@ -7422,6 +7433,25 @@ export class Song {
                         index = index % 12;
                         this.key = index;
                     }
+                }
+            }
+        }
+        this.visualKey = this.key;
+        if (jsonObject["visualKey"] != undefined) {
+            if (typeof (jsonObject["visualKey"]) == "number") {
+                this.visualKey = ((jsonObject["visualKey"] + 1200) >>> 0) % Config.keys.length;
+            } else if (typeof (jsonObject["visualKey"]) == "string") {
+                const visualKey: string = jsonObject["visualKey"];
+                const letter: string = visualKey.charAt(0).toUpperCase();
+                const symbol: string = visualKey.charAt(1).toLowerCase();
+                const letterMap: Readonly<Dictionary<number>> = { "C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11 };
+                const accidentalMap: Readonly<Dictionary<number>> = { "#": 1, "♯": 1, "b": -1, "♭": -1 };
+                let index: number | undefined = letterMap[letter];
+                const offset: number | undefined = accidentalMap[symbol];
+                if (index != undefined) {
+                    if (offset != undefined) index += offset;
+                    if (index < 0) index += 12;
+                    this.visualKey = index % 12;
                 }
             }
         }

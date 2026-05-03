@@ -45,6 +45,14 @@ export function unionOfUsedNotes(pattern: Pattern, flags: boolean[]): void {
     }
 }
 
+function pitchModulo(pitch: number): number {
+    return (pitch % Config.pitchesPerOctave + Config.pitchesPerOctave) % Config.pitchesPerOctave;
+}
+
+function storedToVisualPitch(doc: SongDocument, pitch: number): number {
+    return pitch + Config.keys[doc.song.key].basePitch - Config.keys[doc.song.visualKey].basePitch;
+}
+
 export function generateScaleMap(oldScaleFlags: ReadonlyArray<boolean>, newScaleValue: number, customScaleFlags: ReadonlyArray<boolean>): number[] {
     const newScaleFlags: ReadonlyArray<boolean> = newScaleValue == Config.scales["dictionary"]["Custom"].index ? customScaleFlags : Config.scales[newScaleValue].flags;
     const oldScale: number[] = [];
@@ -3573,6 +3581,19 @@ export class ChangeKey extends Change {
         super();
         if (doc.song.key != newValue) {
             doc.song.key = newValue;
+            doc.currentPatternIsDirty = true;
+            doc.notifier.changed();
+            this._didSomething();
+        }
+    }
+}
+
+export class ChangeVisualKey extends Change {
+    constructor(doc: SongDocument, newValue: number) {
+        super();
+        if (doc.song.visualKey != newValue) {
+            doc.song.visualKey = newValue;
+            doc.currentPatternIsDirty = true;
             doc.notifier.changed();
             this._didSomething();
         }
@@ -4921,14 +4942,14 @@ class ChangeTransposeNote extends UndoableChange {
                 let scale = doc.song.scale == Config.scales.dictionary["Custom"].index ? doc.song.scaleCustom : Config.scales[doc.song.scale].flags;
                 if (upward) {
                     for (let j: number = pitch + 1; j <= maxPitch; j++) {
-                        if (isNoise || ignoreScale || scale[j % 12]) {
+                        if (isNoise || ignoreScale || scale[pitchModulo(storedToVisualPitch(doc, j))]) {
                             pitch = j;
                             break;
                         }
                     }
                 } else {
                     for (let j: number = pitch - 1; j >= 0; j--) {
-                        if (isNoise || ignoreScale || scale[j % 12]) {
+                        if (isNoise || ignoreScale || scale[pitchModulo(storedToVisualPitch(doc, j))]) {
                             pitch = j;
                             break;
                         }
@@ -4970,14 +4991,14 @@ class ChangeTransposeNote extends UndoableChange {
                 let scale = doc.song.scale == Config.scales.dictionary["Custom"].index ? doc.song.scaleCustom : Config.scales[doc.song.scale].flags;
                 if (upward) {
                     for (let i: number = interval + 1; i <= max; i++) {
-                        if (isNoise || ignoreScale || scale[i % 12]) {
+                        if (isNoise || ignoreScale || scale[pitchModulo(storedToVisualPitch(doc, i))]) {
                             interval = i;
                             break;
                         }
                     }
                 } else {
                     for (let i: number = interval - 1; i >= min; i--) {
-                        if (isNoise || ignoreScale || scale[i % 12]) {
+                        if (isNoise || ignoreScale || scale[pitchModulo(storedToVisualPitch(doc, i))]) {
                             interval = i;
                             break;
                         }

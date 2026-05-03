@@ -52,6 +52,16 @@ export class Piano {
         return octaveOffset * Config.pitchesPerOctave + Math.floor(doc.getVisiblePitchCount() / (Config.pitchesPerOctave * 2)) * Config.pitchesPerOctave;
     }
 
+    private _getVisualPitchOffset(): number {
+        return this._doc.song.getChannelIsNoise(this._doc.channel) || this._doc.song.getChannelIsMod(this._doc.channel)
+            ? 0
+            : Config.keys[this._doc.song.key].basePitch - Config.keys[this._doc.song.visualKey].basePitch;
+    }
+
+    private _visualToStoredPitch(pitch: number): number {
+        return pitch - this._getVisualPitchOffset();
+    }
+
     constructor(private _doc: SongDocument) {
 
         for (let i: number = 0; i < Config.drumCount; i++) {
@@ -143,7 +153,7 @@ export class Piano {
 
     private _playLiveInput(): void {
         const octaveOffset: number = this._doc.getBaseVisibleOctave(this._doc.channel) * Config.pitchesPerOctave;
-        const currentPitch: number = this._cursorPitch + octaveOffset;
+        const currentPitch: number = Math.max(0, Math.min(Config.maxPitch, this._visualToStoredPitch(this._cursorPitch + octaveOffset)));
         if (this._playedPitch == currentPitch) return;
         this._doc.performance.removePerformedPitch(this._playedPitch);
         this._playedPitch = currentPitch;
@@ -289,10 +299,10 @@ export class Piano {
         if (this._mouseDown) this._playLiveInput();
 
         if (!this._doc.prefs.showLetters) return;
-        if ((this._renderedScale == this._doc.song.scale && this._doc.song.scale != Config.scales.dictionary["Custom"].index) && this._renderedKey == this._doc.song.key && this._renderedDrums == isDrum && this._renderedMod == isMod && this._renderedPitchCount == this._pitchCount) return;
+        if ((this._renderedScale == this._doc.song.scale && this._doc.song.scale != Config.scales.dictionary["Custom"].index) && this._renderedKey == this._doc.song.visualKey && this._renderedDrums == isDrum && this._renderedMod == isMod && this._renderedPitchCount == this._pitchCount) return;
 
         this._renderedScale = this._doc.song.scale;
-        this._renderedKey = this._doc.song.key;
+        this._renderedKey = this._doc.song.visualKey;
         this._renderedDrums = isDrum;
         this._renderedMod = isMod;
         const instrument: Instrument = this._doc.song.channels[this._doc.channel].instruments[this._doc.getCurrentInstrument()];
@@ -317,7 +327,7 @@ export class Piano {
             }
 
             for (let j: number = 0; j < this._pitchCount; j++) {
-                const pitchNameIndex: number = (j + Config.keys[this._doc.song.key].basePitch) % Config.pitchesPerOctave;
+                const pitchNameIndex: number = (j + Config.keys[this._doc.song.visualKey].basePitch) % Config.pitchesPerOctave;
                 const isWhiteKey: boolean = Config.keys[pitchNameIndex].isWhiteKey;
                 this._pianoKeys[j].style.background = isWhiteKey ? ColorConfig.whitePianoKey : ColorConfig.blackPianoKey;
                 let scale = this._doc.song.scale == Config.scales.dictionary["Custom"].index ? this._doc.song.scaleCustom : Config.scales[this._doc.song.scale].flags;
