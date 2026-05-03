@@ -130,7 +130,6 @@ export class SongDocument {
     public toggleDisplayBrowserUrl() {
         const state: HistoryState | null = this._getHistoryState();
         if (state == null) throw new Error("History state is null.");
-        this.prefs.displayBrowserUrl = !this.prefs.displayBrowserUrl;
         this._replaceState(state, this.song.toBase64String());
     }
 

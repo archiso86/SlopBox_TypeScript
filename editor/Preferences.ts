@@ -26,7 +26,7 @@ export class Preferences {
 	public colorTheme: string;
 	public layout: string;
 	//public displayBrowserUrl: boolean; //comment for testing
-	public displayBrowserUrl: boolean = false; //uncomment for testing
+	public displayBrowserUrl: boolean = true; //uncomment for testing
 	public volume: number = 75;
 	public visibleOctaves: number = Preferences.defaultVisibleOctaves;
 	public pressControlForShortcuts: boolean;
