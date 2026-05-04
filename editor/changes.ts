@@ -3956,6 +3956,17 @@ export class ChangeRectifyPatterns extends Change {
 
         for (let channelIndex: number = 0; channelIndex < song.getChannelCount(); channelIndex++) {
             const channel: Channel = song.channels[channelIndex];
+            for (let bar: number = 0; bar < song.barCount; bar++) {
+                const patternIndex: number = channel.bars[bar];
+                if (patternIndex > 0 && channel.patterns[patternIndex - 1].notes.length == 0) {
+                    channel.bars[bar] = 0;
+                    changed = true;
+                }
+            }
+        }
+
+        for (let channelIndex: number = 0; channelIndex < song.getChannelCount(); channelIndex++) {
+            const channel: Channel = song.channels[channelIndex];
             const oldPatterns: Pattern[] = channel.patterns.slice(0, song.patternsPerChannel);
             const oldBars: number[] = channel.bars.slice(0, song.barCount);
             const duplicateMap: number[] = [];
