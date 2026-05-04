@@ -929,6 +929,7 @@ export class SongEditor {
         option({ selected: true, disabled: true, hidden: false }, "Edit"), // todo: "hidden" should be true but looks wrong on mac chrome, adds checkmark next to first visible option even though it's not selected. :(
         option({ value: "pasteNumbers" }, "Paste Pattern Numbers (" + EditorConfig.ctrlSymbol + "⇧V)"),
         option({ value: "duplicatePatterns" }, "Duplicate Reused Patterns (D)"),
+        option({ value: "rectifyPatterns" }, "Rectify Patterns (" + EditorConfig.ctrlSymbol + "⇧D)"),
         option({ value: "transposeUp" }, "Move Notes Up (+ or ⇧+)"),
         option({ value: "transposeDown" }, "Move Notes Down (- or ⇧-)"),
         option({ value: "moveNotesSideways" }, "Move All Notes Sideways... (W)"),
@@ -4647,7 +4648,10 @@ export class SongEditor {
                 break;
             case 68: // d
                 if (event.shiftKey) {
-                    
+                    if (event.ctrlKey || event.metaKey) {
+                        this.doc.selection.rectifyPatterns();
+                        event.preventDefault();
+                    }
                 } else {
                     if (canPlayNotes) break;
                     if (needControlForShortcuts == (event.ctrlKey || event.metaKey)) {
@@ -5833,6 +5837,9 @@ export class SongEditor {
                 break;
             case "duplicatePatterns":
                 this.doc.selection.duplicatePatterns(false);
+                break;
+            case "rectifyPatterns":
+                this.doc.selection.rectifyPatterns();
                 break;
             case "barCount":
                 this._openPrompt("barCount");

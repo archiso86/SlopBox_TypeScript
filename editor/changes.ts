@@ -3945,6 +3945,113 @@ export class ChangePatternsPerChannel extends Change {
     }
 }
 
+export class ChangeRectifyPatterns extends Change {
+    constructor(doc: SongDocument) {
+        super();
+        const song: Song = doc.song;
+        const patternInstrumentsMatter: boolean = song.patternInstruments;
+        const oldPatternCount: number = song.patternsPerChannel;
+        let neededPatternCount: number = 1;
+        let changed: boolean = false;
+
+        for (let channelIndex: number = 0; channelIndex < song.getChannelCount(); channelIndex++) {
+            const channel: Channel = song.channels[channelIndex];
+            const oldPatterns: Pattern[] = channel.patterns.slice(0, song.patternsPerChannel);
+            const oldBars: number[] = channel.bars.slice(0, song.barCount);
+            const duplicateMap: number[] = [];
+            const firstMatchedBySignature: Dictionary<number> = {};
+
+            for (let patternIndex: number = 1; patternIndex <= song.patternsPerChannel; patternIndex++) {
+                const pattern: Pattern = oldPatterns[patternIndex - 1];
+                let matchedPatternIndex: number | null = null;
+
+                for (let previousPatternIndex: number = 1; previousPatternIndex < patternIndex; previousPatternIndex++) {
+                    const previousPattern: Pattern = oldPatterns[previousPatternIndex - 1];
+                    if (comparePatternNotes(pattern.notes, previousPattern.notes) &&
+                        (!patternInstrumentsMatter || patternsContainSameInstruments(pattern.instruments, previousPattern.instruments))) {
+                        matchedPatternIndex = duplicateMap[previousPatternIndex] || previousPatternIndex;
+                        break;
+                    }
+                }
+
+                duplicateMap[patternIndex] = matchedPatternIndex == null ? patternIndex : matchedPatternIndex;
+            }
+
+            const chronologicalMap: number[] = [];
+            const compactedPatterns: Pattern[] = [];
+            for (let bar: number = 0; bar < song.barCount; bar++) {
+                const oldPatternIndex: number = oldBars[bar];
+                if (oldPatternIndex == 0) continue;
+
+                const duplicatePatternIndex: number = duplicateMap[oldPatternIndex] || oldPatternIndex;
+                if (chronologicalMap[duplicatePatternIndex] == undefined) {
+                    const pattern: Pattern = oldPatterns[duplicatePatternIndex - 1];
+                    let matchingPatternIndex: number | undefined;
+                    const signature: string = JSON.stringify({
+                        instruments: patternInstrumentsMatter ? pattern.instruments.slice().sort((a: number, b: number) => a - b) : [],
+                        notes: pattern.notes,
+                    });
+
+                    matchingPatternIndex = firstMatchedBySignature[signature];
+                    if (matchingPatternIndex == undefined) {
+                        matchingPatternIndex = compactedPatterns.length + 1;
+                        firstMatchedBySignature[signature] = matchingPatternIndex;
+                        compactedPatterns.push(ChangeRectifyPatterns._clonePattern(pattern));
+                    }
+
+                    chronologicalMap[duplicatePatternIndex] = matchingPatternIndex;
+                }
+
+                if (channel.bars[bar] != chronologicalMap[duplicatePatternIndex]) changed = true;
+                channel.bars[bar] = chronologicalMap[duplicatePatternIndex];
+            }
+
+            neededPatternCount = Math.max(neededPatternCount, compactedPatterns.length);
+            for (let patternIndex: number = 0; patternIndex < compactedPatterns.length; patternIndex++) {
+                const oldPattern: Pattern = oldPatterns[patternIndex];
+                const newPattern: Pattern = compactedPatterns[patternIndex];
+                if (!comparePatternNotes(oldPattern.notes, newPattern.notes) || !patternsContainSameInstruments(oldPattern.instruments, newPattern.instruments)) {
+                    changed = true;
+                }
+                channel.patterns[patternIndex] = compactedPatterns[patternIndex];
+            }
+            for (let patternIndex: number = compactedPatterns.length; patternIndex < song.patternsPerChannel; patternIndex++) {
+                if (channel.patterns[patternIndex] == undefined) channel.patterns[patternIndex] = new Pattern();
+                if (channel.patterns[patternIndex].notes.length != 0 || !patternsContainSameInstruments(channel.patterns[patternIndex].instruments, [0])) {
+                    changed = true;
+                }
+                channel.patterns[patternIndex].reset();
+            }
+        }
+
+        if (song.patternsPerChannel != neededPatternCount) {
+            changed = true;
+            for (let channelIndex: number = 0; channelIndex < song.getChannelCount(); channelIndex++) {
+                const channel: Channel = song.channels[channelIndex];
+                for (let patternIndex: number = channel.patterns.length; patternIndex < neededPatternCount; patternIndex++) {
+                    channel.patterns[patternIndex] = new Pattern();
+                }
+                channel.patterns.length = neededPatternCount;
+            }
+            song.patternsPerChannel = neededPatternCount;
+        }
+
+        changed = changed || oldPatternCount != neededPatternCount;
+        if (changed) {
+            doc.notifier.changed();
+            this._didSomething();
+        }
+    }
+
+    private static _clonePattern(pattern: Pattern): Pattern {
+        const clone: Pattern = new Pattern();
+        clone.notes = pattern.cloneNotes();
+        clone.instruments.length = 0;
+        clone.instruments.push(...pattern.instruments);
+        return clone;
+    }
+}
+
 export class ChangeEnsurePatternExists extends UndoableChange {
     private _doc: SongDocument;
     private _bar: number;
