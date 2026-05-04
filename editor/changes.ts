@@ -4753,7 +4753,7 @@ export function comparePatternNotes(a: Note[], b: Note[]): boolean {
     for (let noteIndex: number = 0; noteIndex < a.length; noteIndex++) {
         const oldNote: Note = a[noteIndex];
         const newNote: Note = b[noteIndex];
-        if (newNote.start != oldNote.start || newNote.end != oldNote.end || newNote.pitches.length != oldNote.pitches.length || newNote.pins.length != oldNote.pins.length) {
+        if (newNote.start != oldNote.start || newNote.end != oldNote.end || newNote.continuesLastPattern != oldNote.continuesLastPattern || newNote.pitches.length != oldNote.pitches.length || newNote.pins.length != oldNote.pins.length) {
             return false;
         }
 
