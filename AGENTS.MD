@@ -17,3 +17,4 @@ Creates/reuses persistent Distrobox `slopbox-typescript-node` from `ubuntu:24.04
 # Rules
 - Always `build-offline` at the end of your turn
 - Avoid messing with internals, this is a fork of an existing project
+- Debug using tools that run code, rather than guessing based on hypothetical code flow

@@ -111,6 +111,7 @@ function buildPresetOptions(isNoise: boolean, idSet: string): HTMLSelectElement 
     menu.appendChild(randomGroup);
 
     let firstCategoryGroup: HTMLElement | null = null;
+    let soundFontCategoryGroup: HTMLElement | null = null;
     let customSampleCategoryGroup: HTMLElement | null = null;
 
     for (let categoryIndex: number = 1; categoryIndex < EditorConfig.presetCategories.length; categoryIndex++) {
@@ -126,6 +127,8 @@ function buildPresetOptions(isNoise: boolean, idSet: string): HTMLSelectElement 
 
         if (categoryIndex === 1 && foundAny) {
             firstCategoryGroup = group;
+        } else if (category.name === "Soundfont Presets" && foundAny) {
+            soundFontCategoryGroup = group;
         } else if (category.name === "Custom Sample Presets" && foundAny) {
             customSampleCategoryGroup = group;
         }
@@ -158,10 +161,14 @@ function buildPresetOptions(isNoise: boolean, idSet: string): HTMLSelectElement 
     }
 
     if (firstCategoryGroup != null && customSampleCategoryGroup != null) {
-        // Put the custom sample presets at the top.
         const parent: HTMLSelectElement = <HTMLSelectElement>customSampleCategoryGroup.parentNode;
         parent.removeChild(customSampleCategoryGroup);
         parent.insertBefore(customSampleCategoryGroup, firstCategoryGroup);
+    }
+    if (firstCategoryGroup != null && soundFontCategoryGroup != null) {
+        const parent: HTMLSelectElement = <HTMLSelectElement>soundFontCategoryGroup.parentNode;
+        parent.removeChild(soundFontCategoryGroup);
+        parent.insertBefore(soundFontCategoryGroup, customSampleCategoryGroup ?? firstCategoryGroup);
     }
 
     return menu;
@@ -184,6 +191,12 @@ function replaceOptions(menu: HTMLSelectElement, items: ReadonlyArray<{ value: n
     for (const item of items) {
         menu.appendChild(option({ value: item.value }, item.name));
     }
+}
+
+function replacePresetOptions(menu: HTMLSelectElement, isNoise: boolean): void {
+    const replacement: HTMLSelectElement = buildPresetOptions(isNoise, "");
+    while (menu.firstChild != null) menu.removeChild(menu.firstChild);
+    while (replacement.firstChild != null) menu.appendChild(replacement.firstChild);
 }
 
 class InstrumentTypePrompt implements Prompt {
@@ -303,6 +316,7 @@ class InstrumentTypePrompt implements Prompt {
                     if (presetValue > 0) {
                         this._doc.prompt = null;
                         this._doc.record(new ChangePreset(this._doc, presetValue), true);
+                        this._doc.notifier.notifyWatchers();
                     } else if (presetValue == -1) {
                         alert("Either you are using incompatible tags, or you are using a tag combination that no preset has. \n\nPlease double check your tag combination.");
                     } else if (presetValue == -2) {
@@ -313,11 +327,19 @@ class InstrumentTypePrompt implements Prompt {
                 case "randomGenerated":
                     this._doc.prompt = null;
                     this._doc.record(new ChangeRandomGeneratedInstrument(this._doc, false), true);
+                    this._doc.notifier.notifyWatchers();
                     break;
             }
         } else {
+            const presetValue: number = parseInt(value);
+            const instrument: Instrument = this._doc.song.channels[this._doc.channel].instruments[this._doc.getCurrentInstrument()];
             this._doc.prompt = null;
-            this._doc.record(new ChangePreset(this._doc, parseInt(value)), true);
+            if (instrument.preset == presetValue) {
+                this._doc.notifier.changed();
+            } else {
+                this._doc.record(new ChangePreset(this._doc, presetValue), true);
+            }
+            this._doc.notifier.notifyWatchers();
         }
     }
 
@@ -2020,6 +2042,12 @@ export class SongEditor {
                 : Math.floor((e.samplesLoaded / e.totalSamples) * 100)
         );
         this._sampleLoadingBar.style.width = `${percent}%`;
+        replacePresetOptions(this._pitchedPresetSelect, false);
+        replacePresetOptions(this._drumPresetSelect, true);
+        const instrument: Instrument = this.doc.song.channels[this.doc.channel].instruments[this.doc.getCurrentInstrument()];
+        setSelectedValue(this._pitchedPresetSelect, instrument.preset, true);
+        setSelectedValue(this._drumPresetSelect, instrument.preset, true);
+        this.doc.notifier.changed();
     }
 
     private _toggleAlgorithmCanvas(e: Event): void {
@@ -5731,7 +5759,7 @@ export class SongEditor {
     }
 
     private _whenSetSoundFontInstrument = (): void => {
-        this.doc.record(new ChangeSoundFontInstrument(this.doc, this._soundFontInstrumentSelect.selectedIndex));
+        this.doc.record(new ChangeSoundFontInstrument(this.doc, parseInt(this._soundFontInstrumentSelect.value) | 0));
     }
 
     private _whenSetSoundFontForceSample = (): void => {

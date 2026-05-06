@@ -6995,6 +6995,7 @@ export class Song {
                             settings["vibratoDepth"] = Math.min(1, Math.abs(referenceZone.vibratoCents) / 100);
                             settings["vibratoDelay"] = 0;
                             settings["vibratoSpeed"] = 10;
+                            settings["vibratoType"] = 0;
                         }
                         return {
                             index: 0,
