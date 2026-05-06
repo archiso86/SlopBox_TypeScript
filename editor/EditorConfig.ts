@@ -19,7 +19,7 @@ export interface Preset extends BeepBoxOption {
 }
 
 export const fullTagList: string[] = [
-    "chip", "chipwave", "customchip", "fm", "fm4op", "fm6op", "pwm", "supersaw", "pickedstring", "harmonics", "spectrum", "noise", "drumset"
+    "chip", "chipwave", "customchip", "soundfont", "fm", "fm4op", "fm6op", "pwm", "supersaw", "pickedstring", "harmonics", "spectrum", "noise", "drumset"
 
     , "featured", "novelty"
 
@@ -67,6 +67,7 @@ export class EditorConfig {
                 { name: TypePresets[InstrumentType.supersaw], customType: InstrumentType.supersaw },
                 { name: TypePresets[InstrumentType.customChipWave], customType: InstrumentType.customChipWave },
                 { name: TypePresets[InstrumentType.fm6op], customType: InstrumentType.fm6op },
+                { name: TypePresets[InstrumentType.soundfont], customType: InstrumentType.soundfont },
             ])
         },
         {

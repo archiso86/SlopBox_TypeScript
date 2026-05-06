@@ -7,6 +7,7 @@ import { Deque } from "./Deque";
 import { events } from "../global/Events";
 import { FilterCoefficients, FrequencyResponse, DynamicBiquadFilter, warpInfinityToNyquist } from "./filtering";
 import { xxHash32 } from "js-xxhash";
+import { getSoundFont, loadSoundFont, SoundFontBank, SoundFontInstrument, SoundFontLoadOptions, SoundFontSample, SoundFontZone } from "./SoundFont";
 
 declare global {
     interface Window {
@@ -1689,6 +1690,12 @@ export class Instrument {
     public feedbackAmplitude: number = 0;
     public customChipWave: Float32Array = new Float32Array(64);
     public customChipWaveIntegral: Float32Array = new Float32Array(65); // One extra element for wrap-around in chipSynth.
+    public soundFontUrl: string = "";
+    public soundFontInstrumentIndex: number = 0;
+    public soundFontForceSampleIndex: number = -1;
+    public soundFontUseEnvelopes: boolean = true;
+    public soundFontUseFilters: boolean = true;
+    public soundFontUseLfo: boolean = true;
     public readonly operators: Operator[] = [];
     public readonly spectrumWave: SpectrumWave;
     public readonly harmonicsWave: HarmonicsWave = new HarmonicsWave();
@@ -1872,6 +1879,21 @@ export class Instrument {
                 }
 
                 this.customChipWaveIntegral[64] = 0.0;
+                break;
+            case InstrumentType.soundfont:
+                this.chord = Config.chords.dictionary["simultaneous"].index;
+                this.soundFontUrl = "";
+                this.soundFontInstrumentIndex = 0;
+                this.soundFontForceSampleIndex = -1;
+                this.soundFontUseEnvelopes = true;
+                this.soundFontUseFilters = true;
+                this.soundFontUseLfo = true;
+                this.isUsingAdvancedLoopControls = true;
+                this.chipWaveLoopStart = 0;
+                this.chipWaveLoopEnd = 0;
+                this.chipWaveLoopMode = 4;
+                this.chipWavePlayBackwards = false;
+                this.chipWaveStartOffset = 0;
                 break;
             case InstrumentType.fm:
                 this.chord = Config.chords.dictionary["custom interval"].index;
@@ -2254,6 +2276,23 @@ export class Instrument {
             instrumentObject["chipWavePlayBackwards"] = this.chipWavePlayBackwards;
             instrumentObject["chipWaveStartOffset"] = this.chipWaveStartOffset;
             // advloop addition
+        } else if (this.type == InstrumentType.soundfont) {
+            instrumentObject["soundFontUrl"] = this.soundFontUrl;
+            instrumentObject["soundFontInstrumentIndex"] = this.soundFontInstrumentIndex;
+            instrumentObject["soundFontForceSampleIndex"] = this.soundFontForceSampleIndex;
+            instrumentObject["soundFontUseEnvelopes"] = this.soundFontUseEnvelopes;
+            instrumentObject["soundFontUseFilters"] = this.soundFontUseFilters;
+            instrumentObject["soundFontUseLfo"] = this.soundFontUseLfo;
+            instrumentObject["isUsingAdvancedLoopControls"] = this.isUsingAdvancedLoopControls;
+            instrumentObject["chipWaveLoopMode"] = this.chipWaveLoopMode;
+            instrumentObject["unison"] = this.unison == Config.unisons.length ? "custom" : Config.unisons[this.unison].name;
+            if (this.unison == Config.unisons.length) {
+                instrumentObject["unisonVoices"] = this.unisonVoices;
+                instrumentObject["unisonSpread"] = this.unisonSpread;
+                instrumentObject["unisonOffset"] = this.unisonOffset;
+                instrumentObject["unisonExpression"] = this.unisonExpression;
+                instrumentObject["unisonSign"] = this.unisonSign;
+            }
         } else if (this.type == InstrumentType.pwm) {
             instrumentObject["pulseWidth"] = this.pulseWidth;
             instrumentObject["decimalOffset"] = this.decimalOffset;
@@ -2796,6 +2835,17 @@ export class Instrument {
             }
             // this.chipWave = legacyWaveNames[instrumentObject["wave"]] != undefined ? legacyWaveNames[instrumentObject["wave"]] : modboxWaveNames[instrumentObject["wave"]] != undefined ? modboxWaveNames[instrumentObject["wave"]] : sandboxWaveNames[instrumentObject["wave"]] != undefined ? sandboxWaveNames[instrumentObject["wave"]] : zefboxWaveNames[instrumentObject["wave"]] != undefined ? zefboxWaveNames[instrumentObject["wave"]] : miscWaveNames[instrumentObject["wave"]] != undefined ? miscWaveNames[instrumentObject["wave"]] : paandorasboxWaveNames[instrumentObject["wave"]] != undefined ? paandorasboxWaveNames[instrumentObject["wave"]] : Config.chipWaves.findIndex(wave => wave.name == instrumentObject["wave"]);
             if (this.chipWave == -1) this.chipWave = 1;
+        }
+
+        if (this.type == InstrumentType.soundfont) {
+            this.soundFontUrl = instrumentObject["soundFontUrl"] != undefined ? instrumentObject["soundFontUrl"] : "";
+            this.soundFontInstrumentIndex = instrumentObject["soundFontInstrumentIndex"] != undefined ? Math.max(0, instrumentObject["soundFontInstrumentIndex"] | 0) : 0;
+            this.soundFontForceSampleIndex = instrumentObject["soundFontForceSampleIndex"] != undefined ? instrumentObject["soundFontForceSampleIndex"] | 0 : -1;
+            this.soundFontUseEnvelopes = instrumentObject["soundFontUseEnvelopes"] != undefined ? Boolean(instrumentObject["soundFontUseEnvelopes"]) : true;
+            this.soundFontUseFilters = instrumentObject["soundFontUseFilters"] != undefined ? Boolean(instrumentObject["soundFontUseFilters"]) : true;
+            this.soundFontUseLfo = instrumentObject["soundFontUseLfo"] != undefined ? Boolean(instrumentObject["soundFontUseLfo"]) : true;
+            this.isUsingAdvancedLoopControls = instrumentObject["isUsingAdvancedLoopControls"] != undefined ? Boolean(instrumentObject["isUsingAdvancedLoopControls"]) : true;
+            this.chipWaveLoopMode = instrumentObject["chipWaveLoopMode"] != undefined ? clamp(0, 4 + 1, instrumentObject["chipWaveLoopMode"] | 0) : 4;
         }
 
         if (this.type == InstrumentType.fm || this.type == InstrumentType.fm6op) {
@@ -4070,6 +4120,19 @@ export class Song {
                     buffer.push(SongTagCode.unison, base64IntToCharCode[instrument.unison]);
                     if (instrument.unison == Config.unisons.length) encodeUnisonSettings(buffer, instrument.unisonVoices, instrument.unisonSpread, instrument.unisonOffset, instrument.unisonExpression, instrument.unisonSign);
                     buffer.push(SongTagCode.stringSustain, base64IntToCharCode[instrument.stringSustain | (instrument.stringSustainType << 5)]);
+                } else if (instrument.type == InstrumentType.soundfont) {
+                    buffer.push(SongTagCode.unison, base64IntToCharCode[instrument.unison]);
+                    if (instrument.unison == Config.unisons.length) encodeUnisonSettings(buffer, instrument.unisonVoices, instrument.unisonSpread, instrument.unisonOffset, instrument.unisonExpression, instrument.unisonSign);
+                    buffer.push(SongTagCode.loopControls);
+                    const encodedLoopMode: number = (
+                        (clamp(0, 31 + 1, instrument.chipWaveLoopMode) << 1)
+                        | (instrument.isUsingAdvancedLoopControls ? 1 : 0)
+                    );
+                    buffer.push(base64IntToCharCode[encodedLoopMode]);
+                    buffer.push(base64IntToCharCode[0]);
+                    encode32BitNumber(buffer, 0);
+                    encode32BitNumber(buffer, 0);
+                    encode32BitNumber(buffer, 0);
                 } else if (instrument.type == InstrumentType.mod) {
                     // Handled down below. Could be moved, but meh.
                 } else {
@@ -6702,6 +6765,10 @@ export class Song {
         let presetChipWaveStartOffset: number | null = null;
         let presetChipWaveLoopMode: number | null = null;
         let presetChipWavePlayBackwards: boolean = false;
+        let soundFontForceSampleIndex: number | null = null;
+        let soundFontUseEnvelopes: boolean = true;
+        let soundFontUseFilters: boolean = true;
+        let soundFontUseLfo: boolean = true;
 
         let parsedSampleOptions: boolean = false;
         let optionsStartIndex: number = url.indexOf("!");
@@ -6739,12 +6806,20 @@ export class Song {
                         if (presetChipWaveLoopMode != null) {
                             // @TODO: Error-prone. This should be automatically
                             // derived from the list of available loop modes.
-                            presetChipWaveLoopMode = clamp(0, 3 + 1, presetChipWaveLoopMode);
+                            presetChipWaveLoopMode = clamp(0, 4 + 1, presetChipWaveLoopMode);
                             presetIsUsingAdvancedLoopControls = true;
                         }
                     } else if (optionCode === "e") {
                         presetChipWavePlayBackwards = true;
                         presetIsUsingAdvancedLoopControls = true;
+                    } else if (optionCode === "f") {
+                        soundFontForceSampleIndex = parseIntWithDefault(optionData, null);
+                    } else if (optionCode === "y") {
+                        soundFontUseEnvelopes = optionData !== "0";
+                    } else if (optionCode === "z") {
+                        soundFontUseFilters = optionData !== "0";
+                    } else if (optionCode === "l") {
+                        soundFontUseLfo = optionData !== "0";
                     }
                 }
                 urlSliced = url.slice(optionsEndIndex + 1, url.length);
@@ -6829,6 +6904,10 @@ export class Song {
             if (customSampleRate !== 44100) namedOptions.push("s" + customSampleRate);
             if (customRootKey !== 60) namedOptions.push("r" + customRootKey);
             if (isCustomPercussive) namedOptions.push("p");
+            if (soundFontForceSampleIndex != null) namedOptions.push("f" + soundFontForceSampleIndex);
+            if (!soundFontUseEnvelopes) namedOptions.push("y0");
+            if (!soundFontUseFilters) namedOptions.push("z0");
+            if (!soundFontUseLfo) namedOptions.push("l0");
             if (presetIsUsingAdvancedLoopControls) {
                 if (presetChipWaveLoopStart != null) namedOptions.push("a" + presetChipWaveLoopStart);
                 if (presetChipWaveLoopEnd != null) namedOptions.push("b" + presetChipWaveLoopEnd);
@@ -6840,6 +6919,77 @@ export class Song {
                 urlWithNamedOptions = "!" + namedOptions.join(",") + "!" + urlSliced;
             }
             customSampleUrls[customSampleUrlIndex] = urlWithNamedOptions;
+            if (/\.sf2(?:$|[?#])/i.test(urlSliced)) {
+                const statusKey: string = "sf2:" + customSampleUrlIndex;
+                sampleLoadingState.statusTable[statusKey] = SampleLoadingStatus.loading;
+                sampleLoadingState.urlTable[statusKey] = urlSliced;
+                sampleLoadingState.totalSamples++;
+                const soundFontOptions: SoundFontLoadOptions = {
+                    forceSampleIndex: soundFontForceSampleIndex,
+                    useEnvelopes: soundFontUseEnvelopes,
+                    useFilters: soundFontUseFilters,
+                    useLfo: soundFontUseLfo,
+                };
+                loadSoundFont(urlSliced, soundFontOptions).then((bank: SoundFontBank) => {
+                    const presets: Preset[] = bank.instruments.map((sfInstrument: SoundFontInstrument, instrumentIndex: number) => {
+                        const referenceZone: SoundFontZone | undefined = sfInstrument.zones[0];
+                        const effects: string[] = [];
+                        const settings: any = {
+                            "type": "soundfont",
+                            "soundFontUrl": urlSliced,
+                            "soundFontInstrumentIndex": instrumentIndex,
+                            "soundFontForceSampleIndex": soundFontForceSampleIndex == null ? -1 : soundFontForceSampleIndex,
+                            "soundFontUseEnvelopes": soundFontUseEnvelopes,
+                            "soundFontUseFilters": soundFontUseFilters,
+                            "soundFontUseLfo": soundFontUseLfo,
+                            "isUsingAdvancedLoopControls": true,
+                            "chipWaveLoopMode": 4,
+                            "eqFilter": [],
+                            "effects": effects,
+                            "transition": "normal",
+                            "fadeInSeconds": referenceZone == null ? 0 : Math.min(2, referenceZone.attackSeconds),
+                            "fadeOutTicks": referenceZone == null ? -3 : Math.max(-96, -Math.round(referenceZone.releaseSeconds * 24)),
+                            "chord": "simultaneous",
+                            "unison": "none",
+                            "envelopes": [],
+                        };
+                        if (soundFontUseFilters && referenceZone != null && referenceZone.filterCutoffHz != null) {
+                            effects.push("note filter");
+                            settings["noteFilter"] = [{ "type": "low-pass", "cutoffHz": referenceZone.filterCutoffHz, "linearGain": 1 }];
+                        }
+                        if (soundFontUseLfo && referenceZone != null && referenceZone.vibratoCents != 0) {
+                            effects.push("vibrato");
+                            settings["vibrato"] = "custom";
+                            settings["vibratoDepth"] = Math.min(1, Math.abs(referenceZone.vibratoCents) / 100);
+                            settings["vibratoDelay"] = 0;
+                            settings["vibratoSpeed"] = 10;
+                        }
+                        return {
+                            index: 0,
+                            name: sfInstrument.name,
+                            midiProgram: 80,
+                            settings: settings,
+                        };
+                    });
+                    const existingCategory = EditorConfig.presetCategories.find(category => category.name == "Soundfont Presets");
+                    if (existingCategory == null) {
+                        EditorConfig.presetCategories[EditorConfig.presetCategories.length] = {
+                            name: "Soundfont Presets",
+                            presets: toNameMap(presets),
+                            index: EditorConfig.presetCategories.length,
+                        };
+                    } else {
+                        (<any>existingCategory).presets = toNameMap(existingCategory.presets.concat(presets));
+                    }
+                    sampleLoadingState.samplesLoaded++;
+                    sampleLoadingState.statusTable[statusKey] = SampleLoadingStatus.loaded;
+                    sampleLoadEvents.dispatchEvent(new SampleLoadedEvent(sampleLoadingState.totalSamples, sampleLoadingState.samplesLoaded));
+                }).catch((error) => {
+                    sampleLoadingState.statusTable[statusKey] = SampleLoadingStatus.error;
+                    alert("Failed to load " + urlSliced + ":\n" + error);
+                });
+                return true;
+            }
 
             // @TODO: Could also remove known extensions, but it
             // would probably be much better to be able to specify
@@ -8561,6 +8711,13 @@ class Tone {
     public readonly phases: number[] = [];
     public readonly operatorWaves: OperatorWave[] = [];
     public readonly phaseDeltas: number[] = [];
+    public soundFontWave: Float32Array | null = null;
+    public soundFontRawWave: Float32Array | null = null;
+    public soundFontLoopStart: number = 0;
+    public soundFontLoopEnd: number = 0;
+    public soundFontSampleRate: number = 44100;
+    public soundFontSilent: boolean = false;
+    public soundFontLayer: number = 0;
     // advloop addition
     public directions: number[] = [];
     public chipWaveCompletions: number[] = [];
@@ -8651,6 +8808,13 @@ class Tone {
         this.prevStringDecay = null;
         this.supersawPrevPhaseDelta = null;
         this.drumsetPitch = null;
+        this.soundFontWave = null;
+        this.soundFontRawWave = null;
+        this.soundFontLoopStart = 0;
+        this.soundFontLoopEnd = 0;
+        this.soundFontSampleRate = 44100;
+        this.soundFontSilent = false;
+        this.soundFontLayer = 0;
     }
 }
 
@@ -9700,6 +9864,19 @@ class InstrumentState {
         } else if (instrument.type == InstrumentType.customChipWave) {
             this.wave = (this.aliases) ? instrument.customChipWave! : instrument.customChipWaveIntegral!;
             this.volumeScale = 0.05;
+            this.unisonVoices = instrument.unisonVoices;
+            this.unisonSpread = instrument.unisonSpread;
+            this.unisonOffset = instrument.unisonOffset;
+            this.unisonExpression = instrument.unisonExpression;
+            this.unisonSign = instrument.unisonSign;
+        } else if (instrument.type == InstrumentType.soundfont) {
+            this.wave = Config.chipWaves[0].samples;
+            this.isUsingAdvancedLoopControls = instrument.isUsingAdvancedLoopControls;
+            this.chipWaveLoopStart = 0;
+            this.chipWaveLoopEnd = Config.chipWaves[0].samples.length - 1;
+            this.chipWaveLoopMode = instrument.isUsingAdvancedLoopControls ? instrument.chipWaveLoopMode : 2;
+            this.chipWavePlayBackwards = false;
+            this.chipWaveStartOffset = 0;
             this.unisonVoices = instrument.unisonVoices;
             this.unisonSpread = instrument.unisonSpread;
             this.unisonOffset = instrument.unisonOffset;
@@ -12016,6 +12193,8 @@ export class Synth {
 
                         let strumOffsetParts: number = 0;
                         for (let i: number = 0; i < filteredPitches.length; i++) {
+                            const soundFontLayerCount: number = instrument.type == InstrumentType.soundfont ? Synth.countMatchingSoundFontZones(instrument, filteredPitches[i], note) : 1;
+                            for (let soundFontLayer: number = 0; soundFontLayer < soundFontLayerCount; soundFontLayer++) {
 
                             let prevNoteForThisTone: Note | null = (tonesInPrevNote > i) ? prevNoteForThisInstrument : null;
                             let noteForThisTone: Note = note;
@@ -12048,7 +12227,7 @@ export class Synth {
                             if ((transition.isSeamless || forceContinueAtStart) && nextNoteForThisTone != null) {
                                 noteEndPart = Math.min(Config.partsPerBeat * this.song!.beatsPerBar, noteEndPart + strumOffsetParts);
                             }
-                            if ((!transition.continues && !forceContinueAtStart) || prevNoteForThisTone == null) {
+                            if (soundFontLayer == 0 && ((!transition.continues && !forceContinueAtStart) || prevNoteForThisTone == null)) {
                                 strumOffsetParts += chord.strumParts;
                             }
 
@@ -12090,7 +12269,9 @@ export class Synth {
                             tone.passedEndOfNote = passedEndOfNote;
                             tone.forceContinueAtStart = forceContinueAtStart && prevNoteForThisTone != null;
                             tone.forceContinueAtEnd = forceContinueAtEnd && nextNoteForThisTone != null;
+                            tone.soundFontLayer = soundFontLayer;
                             this.computeTone(song, channelIndex, samplesPerTick, tone, false, false);
+                            }
                         }
                     }
                     if (transition.continues && (toneList.count() <= 0) || (note.pitches.length <= 0)) instrumentState.envelopeComputer.reset(); //stop computing effects envelopes
@@ -12170,6 +12351,44 @@ export class Synth {
         return 1.0 / ((chordSize - 1) * 0.25 + 1.0);
     }
 
+    private static selectSoundFontZone(instrument: Instrument, tone: Tone): { zone: SoundFontZone | null, sample: SoundFontSample | null, midiPitch: number, rootKey: number, forcedSample: boolean } {
+        const zones: SoundFontZone[] = Synth.getMatchingSoundFontZones(instrument, tone.pitches[0], tone.note);
+        const bank: SoundFontBank | undefined = getSoundFont(instrument.soundFontUrl);
+        const zone: SoundFontZone | null = zones.length <= tone.soundFontLayer ? null : zones[tone.soundFontLayer];
+        const canUseForcedSample: boolean = instrument.soundFontForceSampleIndex >= 0 && zones.some(zone => zone.sampleIndex == instrument.soundFontForceSampleIndex);
+        const forcedSample: SoundFontSample | null = bank == null || !canUseForcedSample ? null : bank.samples[instrument.soundFontForceSampleIndex];
+        const sample: SoundFontSample | null = forcedSample != null ? forcedSample : zone == null || bank == null ? null : bank.samples[zone.sampleIndex];
+        return {
+            zone: zone,
+            sample: sample,
+            midiPitch: Math.max(0, Math.min(127, Math.round(tone.pitches[0] + 12))),
+            rootKey: forcedSample == null ? (zone == null ? 60 : zone.rootKey) : forcedSample.originalPitch,
+            forcedSample: forcedSample != null,
+        };
+    }
+
+    private static countMatchingSoundFontZones(instrument: Instrument, pitch: number, note: Note | null): number {
+        return Math.max(1, Synth.getMatchingSoundFontZones(instrument, pitch, note).length);
+    }
+
+    private static getMatchingSoundFontZones(instrument: Instrument, pitch: number, note: Note | null): SoundFontZone[] {
+        const bank: SoundFontBank | undefined = getSoundFont(instrument.soundFontUrl);
+        const sfInstrument: SoundFontInstrument | undefined = bank == null ? undefined : bank.instruments[instrument.soundFontInstrumentIndex];
+        const midiPitch: number = Math.max(0, Math.min(127, Math.round(pitch + 12)));
+        let velocity: number = 127;
+        if (note != null && note.pins.length > 0) {
+            velocity = Math.max(0, Math.min(127, Math.round(127 * note.pins[0].size / Config.noteSizeMax)));
+        }
+        if (sfInstrument == null || bank == null) return [];
+        return sfInstrument.zones.filter(zone =>
+            midiPitch >= zone.keyMin
+            && midiPitch <= zone.keyMax
+            && velocity >= zone.velocityMin
+            && velocity <= zone.velocityMax
+            && bank.samples[zone.sampleIndex] != null
+        );
+    }
+
     private computeTone(song: Song, channelIndex: number, samplesPerTick: number, tone: Tone, released: boolean, shouldFadeOutFast: boolean): void {
         const roundedSamplesPerTick: number = Math.ceil(samplesPerTick);
         const channel: Channel = song.channels[channelIndex];
@@ -12214,6 +12433,9 @@ export class Synth {
         let basePitch: number = Config.keys[song.key].basePitch + (Config.pitchesPerOctave * song.octave);
         let baseExpression: number = 1.0;
         let pitchDamping: number = 48;
+        let soundFontZone: SoundFontZone | null = null;
+        let soundFontSample: SoundFontSample | null = null;
+        let soundFontTune: number = 0;
         if (instrument.type == InstrumentType.spectrum) {
             baseExpression = Config.spectrumBaseExpression;
             if (isNoiseChannel) {
@@ -12252,6 +12474,24 @@ export class Synth {
             }
         } else if (instrument.type == InstrumentType.customChipWave) {
             baseExpression = Config.chipBaseExpression;
+        } else if (instrument.type == InstrumentType.soundfont) {
+            baseExpression = Config.chipBaseExpression;
+            const soundFontSelection = Synth.selectSoundFontZone(instrument, tone);
+            soundFontZone = soundFontSelection.zone;
+            soundFontSample = soundFontSelection.sample;
+            if (soundFontZone == null || soundFontSample == null) {
+                tone.soundFontSilent = true;
+                instrumentState.awake = false;
+            } else {
+                tone.soundFontSilent = false;
+                tone.soundFontWave = soundFontSample.integratedSamples;
+                tone.soundFontRawWave = soundFontSample.rawSamples;
+                tone.soundFontLoopStart = soundFontSelection.forcedSample ? soundFontSample.loopStart : soundFontZone.loopStart;
+                tone.soundFontLoopEnd = soundFontSelection.forcedSample ? soundFontSample.loopEnd : soundFontZone.loopEnd;
+                tone.soundFontSampleRate = soundFontSample.sampleRate;
+                basePitch += -96.37 + Math.log2(soundFontSample.integratedSamples.length / soundFontSample.sampleRate) * -12 - (-60 + soundFontSelection.rootKey);
+                soundFontTune = soundFontZone.coarseTune + (soundFontZone.fineTune + soundFontSample.pitchCorrection) / 100;
+            }
         } else if (instrument.type == InstrumentType.harmonics) {
             baseExpression = Config.harmonicsBaseExpression;
         } else if (instrument.type == InstrumentType.pwm) {
@@ -12823,8 +13063,8 @@ export class Synth {
                 }
             }
 
-            const startPitch: number = basePitch + (pitch + intervalStart) * intervalScale;
-            const endPitch: number = basePitch + (pitch + intervalEnd) * intervalScale;
+            const startPitch: number = basePitch + (pitch + intervalStart + soundFontTune) * intervalScale;
+            const endPitch: number = basePitch + (pitch + intervalEnd + soundFontTune) * intervalScale;
             let pitchExpressionStart: number;
             // TODO: use the second element of prevPitchExpressions for the unison voice, compute a separate expression delta for it.
             if (tone.prevPitchExpressions[0] != null) {
@@ -12887,7 +13127,7 @@ export class Synth {
             }
 
             const startFreq: number = Instrument.frequencyFromPitch(startPitch);
-            if (instrument.type == InstrumentType.chip || instrument.type == InstrumentType.customChipWave || instrument.type == InstrumentType.harmonics || instrument.type == InstrumentType.pickedString || instrument.type == InstrumentType.spectrum || instrument.type == InstrumentType.pwm || instrument.type == InstrumentType.noise || instrument.type == InstrumentType.drumset) {
+            if (instrument.type == InstrumentType.chip || instrument.type == InstrumentType.customChipWave || instrument.type == InstrumentType.soundfont || instrument.type == InstrumentType.harmonics || instrument.type == InstrumentType.pickedString || instrument.type == InstrumentType.spectrum || instrument.type == InstrumentType.pwm || instrument.type == InstrumentType.noise || instrument.type == InstrumentType.drumset) {
                 const unisonVoices: number = instrument.unisonVoices;
                 const unisonSpread: number = instrument.unisonSpread;
                 const unisonOffset: number = instrument.unisonOffset;
@@ -13155,6 +13395,11 @@ export class Synth {
                 expressionEnd = 0;
                 instrumentState.awake = false;
             }
+            if (instrument.type == InstrumentType.soundfont && tone.soundFontSilent) {
+                expressionStart = 0;
+                expressionEnd = 0;
+                instrumentState.awake = false;
+            }
 
             tone.expression = expressionStart;
             tone.expressionDelta = (expressionEnd - expressionStart) / roundedSamplesPerTick;
@@ -13264,6 +13509,8 @@ export class Synth {
             return Synth.chipSynth;
         } else if (instrument.type == InstrumentType.customChipWave) {
             return Synth.chipSynth;
+        } else if (instrument.type == InstrumentType.soundfont) {
+            return Synth.loopableChipSynth;
         } else if (instrument.type == InstrumentType.harmonics) {
             return Synth.harmonicsSynth;
         } else if (instrument.type == InstrumentType.pwm) {
@@ -13356,12 +13603,13 @@ export class Synth {
             const aliases = (effectsIncludeDistortion(instrumentState.effects) && instrumentState.aliases);
             // const aliases = false;
             const data = synth.tempMonoInstrumentSampleBuffer;
-            const wave = instrumentState.wave;
+            const wave = tone.soundFontWave || instrumentState.wave;
+            const rawWave = tone.soundFontRawWave || wave;
             const volumeScale = instrumentState.volumeScale;
-            const waveLength = (aliases && instrumentState.type == 8) ? wave.length : wave.length - 1;
+            const waveLength = (aliases && instrumentState.type == 8) ? rawWave.length : wave.length - 1;
 
-            let chipWaveLoopEnd = Math.max(0, Math.min(waveLength, instrumentState.chipWaveLoopEnd));
-            let chipWaveLoopStart = Math.max(0, Math.min(chipWaveLoopEnd - 1, instrumentState.chipWaveLoopStart));
+            let chipWaveLoopEnd = Math.max(0, Math.min(waveLength, tone.soundFontWave ? tone.soundFontLoopEnd : instrumentState.chipWaveLoopEnd));
+            let chipWaveLoopStart = Math.max(0, Math.min(chipWaveLoopEnd - 1, tone.soundFontWave ? tone.soundFontLoopStart : instrumentState.chipWaveLoopStart));
             `
             // @TODO: This is where to set things up for the release loop mode.
             // const ticksSinceReleased = tone.ticksSinceReleased;
@@ -13378,6 +13626,7 @@ export class Synth {
             }
             const chipWaveLoopMode = instrumentState.chipWaveLoopMode;
             const chipWavePlayBackwards = instrumentState.chipWavePlayBackwards;
+            const released = tone.ticksSinceReleased > 0;
             const unisonSign = tone.specialIntervalExpressionMult * instrumentState.unisonSign;
             if(instrumentState.unisonSpread == 0 && !instrumentState.chord.customInterval) {
             `
@@ -13399,7 +13648,7 @@ export class Synth {
             }
 
             chipSource += `
-            if (chipWaveLoopMode === 3 || chipWaveLoopMode === 2 || chipWaveLoopMode === 0) {
+            if (chipWaveLoopMode === 4 || chipWaveLoopMode === 3 || chipWaveLoopMode === 2 || chipWaveLoopMode === 0) {
                 // If playing once or looping, we force the correct direction,
                 // since it shouldn't really change. This is mostly so that if
                 // the mode is changed midway through playback, it won't get
@@ -13419,7 +13668,7 @@ export class Synth {
             chipSource += `
                 }
             }
-            if (chipWaveLoopMode === 0 || chipWaveLoopMode === 1) {`
+            if (chipWaveLoopMode === 0 || chipWaveLoopMode === 1 || (chipWaveLoopMode === 4 && !released)) {`
             // If looping or ping-ponging, we clear the completion status,
             // as it's not relevant anymore. This is mostly so that if the
             // mode is changed midway through playback, it won't get stuck
@@ -13538,7 +13787,32 @@ export class Synth {
                         `.replaceAll("#", i + "");
             }
             chipSource += `
-                } else if (chipWaveLoopMode === 0) {
+                } else if (chipWaveLoopMode === 4 && released) {
+                `
+            for (let i: number = 0; i < voiceCount; i++) {
+                chipSource += `
+                        if (direction# === 1) {
+                            if (phase# > waveLength) {
+                                if (chipWaveCompletion# <= 0) {
+                                    lastWave# = prevWave#;
+                                    chipWaveCompletion#++;
+                                }
+                                wrapped = 1;
+                            }
+                        } else if (direction# === -1) {
+                            if (phase# < 0) {
+                                if (chipWaveCompletion# <= 0) {
+                                    lastWave# = prevWave#;
+                                    chipWaveCompletion#++;
+                                }
+                                wrapped = 1;
+                            }
+                        }
+
+                        `.replaceAll("#", i + "");
+            }
+            chipSource += `
+                } else if (chipWaveLoopMode === 4 || chipWaveLoopMode === 0) {
                 `
             // loop
             for (let i: number = 0; i < voiceCount; i++) {
@@ -13598,7 +13872,7 @@ export class Synth {
                 `
             for (let i: number = 0; i < voiceCount; i++) {
                 chipSource += `
-                        wave# = wave[Synth.wrap(Math.floor(phase#), waveLength)];
+                        wave# = rawWave[Synth.wrap(Math.floor(phase#), waveLength)];
                         prevWave# = wave#;
                         const completionFade# = chipWaveCompletion# > 0 ? ((chipWaveCompletionFadeLength - Math.min(chipWaveCompletion#, chipWaveCompletionFadeLength)) / chipWaveCompletionFadeLength) : 1;
 
@@ -13623,7 +13897,7 @@ export class Synth {
             }
 
             chipSource += `
-                    if (!(chipWaveLoopMode === 0 && chipWaveLoopStart === 0 && chipWaveLoopEnd === waveLength) && wrapped !== 0) {
+                    if (!((chipWaveLoopMode === 0 || (chipWaveLoopMode === 4 && !released)) && chipWaveLoopStart === 0 && chipWaveLoopEnd === waveLength) && wrapped !== 0) {
                     `
             for (let i: number = 0; i < voiceCount; i++) {
                 chipSource += `

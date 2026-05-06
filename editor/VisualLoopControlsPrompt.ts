@@ -359,7 +359,8 @@ export class VisualLoopControlsPrompt {
         option({ value: 0 }, "Loop"),
         option({ value: 1 }, "Ping-Pong"),
         option({ value: 2 }, "Play Once"),
-        option({ value: 3 }, "Play Loop Once")
+        option({ value: 3 }, "Play Loop Once"),
+        option({ value: 4 }, "Attack Then Loop Then Release")
     );
     private _startOffsetStepper: HTMLInputElement = input({ style: "flex-grow: 1; margin-left: 1em; width: 100%;", type: "number", value: this._chipWaveStartOffset, min: "0", step: "1" });
     private _loopStartStepper: HTMLInputElement = input({ style: "flex-grow: 1; margin-left: 1em; width: 100%;", type: "number", value: this._chipWaveLoopStart, min: "0", step: "1" });

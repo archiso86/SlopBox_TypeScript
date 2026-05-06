@@ -17,6 +17,10 @@ interface SampleEntry {
     chipWaveStartOffset: number | null;
     chipWaveLoopMode: number | null;
     chipWavePlayBackwards: boolean;
+    soundFontForceSampleIndex: number | null;
+    soundFontUseEnvelopes: boolean;
+    soundFontUseFilters: boolean;
+    soundFontUseLfo: boolean;
 }
 
 interface ParsedEntries {
@@ -200,6 +204,10 @@ export class AddSamplesPrompt {
             chipWaveStartOffset: null,
             chipWaveLoopMode: null,
             chipWavePlayBackwards: false,
+            soundFontForceSampleIndex: null,
+            soundFontUseEnvelopes: true,
+            soundFontUseFilters: true,
+            soundFontUseLfo: true,
         });
         this._entryOptionsDisplayStates[entryIndex] = false;
         this._reconfigureAddSampleButton();
@@ -340,6 +348,27 @@ export class AddSamplesPrompt {
         this._entries[entryIndex].chipWavePlayBackwards = newValue;
     }
 
+    private _whenSoundFontForceSampleChanges = (event: Event): void => {
+        const element: HTMLInputElement = <HTMLInputElement>event.target;
+        const entryIndex: number = +(element.dataset.index!);
+        this._entries[entryIndex].soundFontForceSampleIndex = parseIntWithDefault(element.value, null);
+    }
+
+    private _whenSoundFontUseEnvelopesChanges = (event: Event): void => {
+        const element: HTMLInputElement = <HTMLInputElement>event.target;
+        this._entries[+(element.dataset.index!)].soundFontUseEnvelopes = element.checked;
+    }
+
+    private _whenSoundFontUseFiltersChanges = (event: Event): void => {
+        const element: HTMLInputElement = <HTMLInputElement>event.target;
+        this._entries[+(element.dataset.index!)].soundFontUseFilters = element.checked;
+    }
+
+    private _whenSoundFontUseLfoChanges = (event: Event): void => {
+        const element: HTMLInputElement = <HTMLInputElement>event.target;
+        this._entries[+(element.dataset.index!)].soundFontUseLfo = element.checked;
+    }
+
     // @TODO: This is copy pasted from SongEditor, should probably be moved to
     //        somewhere else that can be imported from both places.
     private _copyTextToClipboard(text: string): void {
@@ -450,6 +479,10 @@ export class AddSamplesPrompt {
                         chipWaveStartOffset: null,
                         chipWaveLoopMode: null,
                         chipWavePlayBackwards: false,
+                        soundFontForceSampleIndex: null,
+                        soundFontUseEnvelopes: true,
+                        soundFontUseFilters: true,
+                        soundFontUseLfo: true,
                     });
                 }
                 useLegacySamples = true;
@@ -465,6 +498,10 @@ export class AddSamplesPrompt {
                         chipWaveStartOffset: null,
                         chipWaveLoopMode: null,
                         chipWavePlayBackwards: false,
+                        soundFontForceSampleIndex: null,
+                        soundFontUseEnvelopes: true,
+                        soundFontUseFilters: true,
+                        soundFontUseLfo: true,
                     });
                 }
                 useNintariboxSamples = true;
@@ -480,6 +517,10 @@ export class AddSamplesPrompt {
                         chipWaveStartOffset: null,
                         chipWaveLoopMode: null,
                         chipWavePlayBackwards: false,
+                        soundFontForceSampleIndex: null,
+                        soundFontUseEnvelopes: true,
+                        soundFontUseFilters: true,
+                        soundFontUseLfo: true,
                     });
                 }
                 useMarioPaintboxSamples = true;
@@ -493,6 +534,10 @@ export class AddSamplesPrompt {
                 let chipWaveStartOffset: number | null = null;
                 let chipWaveLoopMode: number | null = null;
                 let chipWavePlayBackwards: boolean = false;
+                let soundFontForceSampleIndex: number | null = null;
+                let soundFontUseEnvelopes: boolean = true;
+                let soundFontUseFilters: boolean = true;
+                let soundFontUseLfo: boolean = true;
                 let optionsStartIndex: number = url.indexOf("!");
                 let optionsEndIndex: number = -1;
                 let parsedSampleOptions: boolean = false;
@@ -521,10 +566,18 @@ export class AddSamplesPrompt {
                                     // @TODO: Error-prone. This should be
                                     // automatically derived from the list of
                                     // available loop modes.
-                                    chipWaveLoopMode = clamp(0, 3 + 1, chipWaveLoopMode);
+                                    chipWaveLoopMode = clamp(0, 4 + 1, chipWaveLoopMode);
                                 }
                             } else if (optionCode === "e") {
                                 chipWavePlayBackwards = true;
+                            } else if (optionCode === "f") {
+                                soundFontForceSampleIndex = parseIntWithDefault(optionData, null);
+                            } else if (optionCode === "y") {
+                                soundFontUseEnvelopes = optionData !== "0";
+                            } else if (optionCode === "z") {
+                                soundFontUseFilters = optionData !== "0";
+                            } else if (optionCode === "l") {
+                                soundFontUseLfo = optionData !== "0";
                             }
                         }
                         urlSliced = url.slice(optionsEndIndex + 1, url.length);
@@ -567,6 +620,10 @@ export class AddSamplesPrompt {
                     chipWaveStartOffset: chipWaveStartOffset,
                     chipWaveLoopMode: chipWaveLoopMode,
                     chipWavePlayBackwards: chipWavePlayBackwards,
+                    soundFontForceSampleIndex: soundFontForceSampleIndex,
+                    soundFontUseEnvelopes: soundFontUseEnvelopes,
+                    soundFontUseFilters: soundFontUseFilters,
+                    soundFontUseLfo: soundFontUseLfo,
                 });
             }
         }
@@ -583,6 +640,10 @@ export class AddSamplesPrompt {
         const chipWaveStartOffset: number | null = entry.chipWaveStartOffset;
         const chipWaveLoopMode: number | null = entry.chipWaveLoopMode;
         const chipWavePlayBackwards: boolean = entry.chipWavePlayBackwards;
+        const soundFontForceSampleIndex: number | null = entry.soundFontForceSampleIndex;
+        const soundFontUseEnvelopes: boolean = entry.soundFontUseEnvelopes;
+        const soundFontUseFilters: boolean = entry.soundFontUseFilters;
+        const soundFontUseLfo: boolean = entry.soundFontUseLfo;
         const urlInLowerCase: string = url.toLowerCase();
         const isBundledSamplePack: boolean = (
             urlInLowerCase === "legacysamples"
@@ -598,6 +659,10 @@ export class AddSamplesPrompt {
         if (chipWaveStartOffset != null) options.push("c" + chipWaveStartOffset);
         if (chipWaveLoopMode != null) options.push("d" + chipWaveLoopMode);
         if (chipWavePlayBackwards) options.push("e");
+        if (soundFontForceSampleIndex != null) options.push("f" + soundFontForceSampleIndex);
+        if (!soundFontUseEnvelopes) options.push("y0");
+        if (!soundFontUseFilters) options.push("z0");
+        if (!soundFontUseLfo) options.push("l0");
         if (isBundledSamplePack || options.length <= 0) {
             return url;
         } else {
@@ -673,12 +738,20 @@ export class AddSamplesPrompt {
                 option({ value: 1 }, "Ping-Pong"),
                 option({ value: 2 }, "Play Once"),
                 option({ value: 3 }, "Play Loop Once"),
+                option({ value: 4 }, "Attack Then Loop Then Release"),
             );
             if (entry.chipWaveLoopMode != null) {
                 chipWaveLoopModeSelect.value = "" + entry.chipWaveLoopMode;
             }
             const chipWavePlayBackwardsBox: HTMLInputElement = input({ type: "checkbox", style: "width: 1em; padding: 0; margin-left: auto; margin-right: auto;" });
             chipWavePlayBackwardsBox.checked = entry.chipWavePlayBackwards;
+            const soundFontForceSampleStepper: HTMLInputElement = input({ style: "flex-grow: 1; margin-left: 1em; width: 100%;", type: "number", value: "" + (entry.soundFontForceSampleIndex != null ? entry.soundFontForceSampleIndex : ""), min: "0", step: "1" });
+            const soundFontUseEnvelopesBox: HTMLInputElement = input({ type: "checkbox", style: "width: 1em; padding: 0; margin-left: auto; margin-right: auto;" });
+            const soundFontUseFiltersBox: HTMLInputElement = input({ type: "checkbox", style: "width: 1em; padding: 0; margin-left: auto; margin-right: auto;" });
+            const soundFontUseLfoBox: HTMLInputElement = input({ type: "checkbox", style: "width: 1em; padding: 0; margin-left: auto; margin-right: auto;" });
+            soundFontUseEnvelopesBox.checked = entry.soundFontUseEnvelopes;
+            soundFontUseFiltersBox.checked = entry.soundFontUseFilters;
+            soundFontUseLfoBox.checked = entry.soundFontUseLfo;
             const sampleName: string = this._getSampleName(entry);
             percussionBox.checked = entry.percussion;
             const copyLinkPresetButton: HTMLButtonElement = button({ style: "height: auto; min-height: var(--button-size);", title: "For use with \"Add multiple samples\"" }, "Copy link preset");
@@ -721,6 +794,22 @@ export class AddSamplesPrompt {
                     div({ style: `flex-shrink: 0; text-align: right; color: ${ColorConfig.primaryText};` }, span({ title: "Applies to the \"Backwards\" loop control option of the preset created for this sample" }, "Backwards")),
                     chipWavePlayBackwardsBox
                 ),
+                div({ style: "display: flex; flex-direction: row; align-items: center; justify-content: flex-end; margin-bottom: 0.5em;" },
+                    div({ style: `flex-shrink: 0; text-align: right; color: ${ColorConfig.primaryText};` }, span({ title: "For .sf2 only. Empty means choose by pitch and velocity zones." }, "Force SF2 Sample")),
+                    soundFontForceSampleStepper
+                ),
+                div({ style: "display: flex; flex-direction: row; align-items: center; justify-content: flex-end; margin-bottom: 0.5em;" },
+                    div({ style: `flex-shrink: 0; text-align: right; color: ${ColorConfig.primaryText};` }, "Use SF2 Envelopes"),
+                    soundFontUseEnvelopesBox
+                ),
+                div({ style: "display: flex; flex-direction: row; align-items: center; justify-content: flex-end; margin-bottom: 0.5em;" },
+                    div({ style: `flex-shrink: 0; text-align: right; color: ${ColorConfig.primaryText};` }, "Use SF2 Filters"),
+                    soundFontUseFiltersBox
+                ),
+                div({ style: "display: flex; flex-direction: row; align-items: center; justify-content: flex-end; margin-bottom: 0.5em;" },
+                    div({ style: `flex-shrink: 0; text-align: right; color: ${ColorConfig.primaryText};` }, "Use SF2 LFO"),
+                    soundFontUseLfoBox
+                ),
             );
             urlInput.dataset.index = "" + entryIndex;
             sampleRateStepper.dataset.index = "" + entryIndex;
@@ -731,6 +820,10 @@ export class AddSamplesPrompt {
             chipWaveStartOffsetStepper.dataset.index = "" + entryIndex;
             chipWaveLoopModeSelect.dataset.index = "" + entryIndex;
             chipWavePlayBackwardsBox.dataset.index = "" + entryIndex;
+            soundFontForceSampleStepper.dataset.index = "" + entryIndex;
+            soundFontUseEnvelopesBox.dataset.index = "" + entryIndex;
+            soundFontUseFiltersBox.dataset.index = "" + entryIndex;
+            soundFontUseLfoBox.dataset.index = "" + entryIndex;
             copyLinkPresetButton.dataset.index = "" + entryIndex;
             removeButton.dataset.index = "" + entryIndex;
             moveUpButton.dataset.index = "" + entryIndex;
@@ -768,6 +861,10 @@ export class AddSamplesPrompt {
             chipWaveStartOffsetStepper.addEventListener("change", this._whenChipWaveStartOffsetChanges);
             chipWaveLoopModeSelect.addEventListener("change", this._whenChipWaveLoopModeChanges);
             chipWavePlayBackwardsBox.addEventListener("change", this._whenChipWavePlayBackwardsChanges);
+            soundFontForceSampleStepper.addEventListener("change", this._whenSoundFontForceSampleChanges);
+            soundFontUseEnvelopesBox.addEventListener("change", this._whenSoundFontUseEnvelopesChanges);
+            soundFontUseFiltersBox.addEventListener("change", this._whenSoundFontUseFiltersChanges);
+            soundFontUseLfoBox.addEventListener("change", this._whenSoundFontUseLfoChanges);
             copyLinkPresetButton.addEventListener("click", this._whenCopyLinkPresetClicked);
             removeButton.addEventListener("click", this._whenRemoveSampleClicked);
             if (canMoveUp) {

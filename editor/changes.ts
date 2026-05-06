@@ -692,7 +692,11 @@ export class ChangePreset extends Change {
             const preset: Preset | null = preset1 ?? EditorConfig.valueToPreset(newValue);
             if (preset != null) {
                 if (preset.customType != undefined) {
-                    instrument.type = preset.customType;
+                    if (preset.customType == InstrumentType.soundfont) {
+                        instrument.setTypeAndReset(preset.customType, doc.song.getChannelIsNoise(doc.channel), doc.song.getChannelIsMod(doc.channel));
+                    } else {
+                        instrument.type = preset.customType;
+                    }
                     if (!Config.instrumentTypeHasSpecialInterval[instrument.type] && Config.chords[instrument.chord].customInterval) {
                         instrument.chord = 0;
                     }
@@ -5541,6 +5545,34 @@ export class ChangeChipWave extends Change {
     }
 }
 
+export class ChangeSoundFontInstrument extends Change {
+    constructor(doc: SongDocument, newValue: number) {
+        super();
+        const instrument: Instrument = doc.song.channels[doc.channel].instruments[doc.getCurrentInstrument()];
+        if (instrument.soundFontInstrumentIndex != newValue) {
+            instrument.soundFontInstrumentIndex = Math.max(0, newValue | 0);
+            instrument.soundFontForceSampleIndex = -1;
+            instrument.preset = instrument.type;
+            doc.notifier.changed();
+            this._didSomething();
+        }
+    }
+}
+
+export class ChangeSoundFontForceSample extends Change {
+    constructor(doc: SongDocument, newValue: number) {
+        super();
+        const instrument: Instrument = doc.song.channels[doc.channel].instruments[doc.getCurrentInstrument()];
+        const sampleIndex: number = newValue < 0 ? -1 : newValue | 0;
+        if (instrument.soundFontForceSampleIndex != sampleIndex) {
+            instrument.soundFontForceSampleIndex = sampleIndex;
+            instrument.preset = instrument.type;
+            doc.notifier.changed();
+            this._didSomething();
+        }
+    }
+}
+
 // advloop addition
 export class ChangeChipWaveUseAdvancedLoopControls extends Change {
     constructor(doc: SongDocument, newValue: boolean) {
@@ -5549,8 +5581,8 @@ export class ChangeChipWaveUseAdvancedLoopControls extends Change {
         if (instrument.isUsingAdvancedLoopControls != newValue) {
             instrument.isUsingAdvancedLoopControls = newValue;
             instrument.chipWaveLoopStart = 0;
-            instrument.chipWaveLoopEnd = Config.rawRawChipWaves[instrument.chipWave].samples.length - 1;
-            instrument.chipWaveLoopMode = 0;
+            instrument.chipWaveLoopEnd = instrument.type == InstrumentType.soundfont ? 0 : Config.rawRawChipWaves[instrument.chipWave].samples.length - 1;
+            instrument.chipWaveLoopMode = instrument.type == InstrumentType.soundfont ? 4 : 0;
             instrument.chipWavePlayBackwards = false;
             instrument.chipWaveStartOffset = 0;
             instrument.preset = instrument.type;
@@ -5563,9 +5595,10 @@ export class ChangeChipWaveLoopMode extends Change {
     constructor(doc: SongDocument, newValue: number) {
         super();
         const instrument = doc.song.channels[doc.channel].instruments[doc.getCurrentInstrument()];
-        if (instrument.chipWaveLoopMode != newValue) {
+        const loopMode: number = clamp(0, 4 + 1, newValue | 0);
+        if (instrument.chipWaveLoopMode != loopMode) {
             instrument.isUsingAdvancedLoopControls = true;
-            instrument.chipWaveLoopMode = newValue;
+            instrument.chipWaveLoopMode = loopMode;
             instrument.preset = instrument.type;
             doc.notifier.changed();
             this._didSomething();
