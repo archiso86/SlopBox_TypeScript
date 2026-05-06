@@ -259,7 +259,7 @@ const enum SongTagCode {
     feedbackEnvelope = CharCode.V, // added in BeepBox URL version 6, DEPRECATED
     pulseWidth = CharCode.W, // added in BeepBox URL version 7
     aliases = CharCode.X, // added in JummBox URL version 4 for aliases, DEPRECATED, [UB] repurposed for PWM decimal offset (DEPRECATED as well)
-    //                      = CharCode.Y,
+    soundFont = CharCode.Y,
     //	                    = CharCode.Z,
     //	                    = CharCode.NUM_0,
     //	                    = CharCode.NUM_1,
@@ -4121,6 +4121,21 @@ export class Song {
                     if (instrument.unison == Config.unisons.length) encodeUnisonSettings(buffer, instrument.unisonVoices, instrument.unisonSpread, instrument.unisonOffset, instrument.unisonExpression, instrument.unisonSign);
                     buffer.push(SongTagCode.stringSustain, base64IntToCharCode[instrument.stringSustain | (instrument.stringSustainType << 5)]);
                 } else if (instrument.type == InstrumentType.soundfont) {
+                    const encodedSoundFontUrl: string = encodeURIComponent(instrument.soundFontUrl);
+                    buffer.push(SongTagCode.soundFont);
+                    encode32BitNumber(buffer, encodedSoundFontUrl.length);
+                    for (let j: number = 0; j < encodedSoundFontUrl.length; j++) {
+                        buffer.push(encodedSoundFontUrl.charCodeAt(j));
+                    }
+                    encode32BitNumber(buffer, instrument.soundFontInstrumentIndex);
+                    encode32BitNumber(buffer, instrument.soundFontForceSampleIndex + 1);
+                    buffer.push(base64IntToCharCode[
+                        (instrument.soundFontUseEnvelopes ? 1 : 0)
+                        | (instrument.soundFontUseFilters ? 2 : 0)
+                        | (instrument.soundFontUseLfo ? 4 : 0)
+                        | (instrument.isUsingAdvancedLoopControls ? 8 : 0)
+                    ]);
+                    buffer.push(base64IntToCharCode[clamp(0, 31 + 1, instrument.chipWaveLoopMode)]);
                     buffer.push(SongTagCode.unison, base64IntToCharCode[instrument.unison]);
                     if (instrument.unison == Config.unisons.length) encodeUnisonSettings(buffer, instrument.unisonVoices, instrument.unisonSpread, instrument.unisonOffset, instrument.unisonExpression, instrument.unisonSign);
                     buffer.push(SongTagCode.loopControls);
@@ -5226,6 +5241,23 @@ export class Song {
                 const sustainValue: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
                 instrument.stringSustain = clamp(0, Config.stringSustainRange, sustainValue & 0x1F);
                 instrument.stringSustainType = Config.enableAcousticSustain ? clamp(0, SustainType.length, sustainValue >> 5) : SustainType.bright;
+            } break;
+            case SongTagCode.soundFont: {
+                const instrument: Instrument = this.channels[instrumentChannelIterator].instruments[instrumentIndexIterator];
+                const encodedSoundFontUrlLength: number = decode32BitNumber(compressed, charIndex);
+                charIndex += 6;
+                instrument.soundFontUrl = decodeURIComponent(compressed.substring(charIndex, charIndex + encodedSoundFontUrlLength));
+                charIndex += encodedSoundFontUrlLength;
+                instrument.soundFontInstrumentIndex = Math.max(0, decode32BitNumber(compressed, charIndex) | 0);
+                charIndex += 6;
+                instrument.soundFontForceSampleIndex = (decode32BitNumber(compressed, charIndex) | 0) - 1;
+                charIndex += 6;
+                const soundFontFlags: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                instrument.soundFontUseEnvelopes = Boolean(soundFontFlags & 1);
+                instrument.soundFontUseFilters = Boolean(soundFontFlags & 2);
+                instrument.soundFontUseLfo = Boolean(soundFontFlags & 4);
+                instrument.isUsingAdvancedLoopControls = Boolean(soundFontFlags & 8);
+                instrument.chipWaveLoopMode = clamp(0, 31 + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
             } break;
             case SongTagCode.fadeInOut: {
                 if ((beforeNine && fromBeepBox) || ((fromJummBox && beforeFive) || (beforeFour && fromGoldBox))) {
