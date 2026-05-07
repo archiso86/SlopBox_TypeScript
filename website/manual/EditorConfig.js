@@ -32,7 +32,7 @@ var EditorConfig = (function (exports) {
         });
     };
     var _a;
-    const TypePresets = ["chip", "FM", "noise", "spectrum", "drumset", "harmonics", "pulse width", "picked string", "supersaw", "chip (custom)", "mod", "FM (6-op)"];
+    const TypePresets = ["chip", "FM", "noise", "spectrum", "drumset", "harmonics", "pulse width", "picked string", "supersaw", "chip (custom)", "mod", "FM (6-op)", "soundfont"];
     class SampleLoadEvents extends EventTarget {
         constructor() {
             super();
@@ -235,8 +235,8 @@ var EditorConfig = (function (exports) {
         { name: "÷12", stepsPerBeat: 12, roundUpThresholds: null },
         { name: "freehand (÷24)", stepsPerBeat: 24, roundUpThresholds: null },
     ]);
-    Config.instrumentTypeNames = ["chip", "FM", "noise", "spectrum", "drumset", "harmonics", "PWM", "Picked String", "supersaw", "custom chip", "mod", "FM6op"];
-    Config.instrumentTypeHasSpecialInterval = [true, true, false, false, false, true, false, false, false, false, false];
+    Config.instrumentTypeNames = ["chip", "FM", "noise", "spectrum", "drumset", "harmonics", "PWM", "Picked String", "supersaw", "custom chip", "mod", "FM6op", "soundfont"];
+    Config.instrumentTypeHasSpecialInterval = [true, true, false, false, false, true, false, false, false, false, false, true, false];
     Config.chipBaseExpression = 0.03375;
     Config.fmBaseExpression = 0.03;
     Config.noiseBaseExpression = 0.19;
@@ -1297,7 +1297,7 @@ var EditorConfig = (function (exports) {
     }
 
     const fullTagList = [
-        "chip", "chipwave", "customchip", "fm", "fm4op", "fm6op", "pwm", "supersaw", "pickedstring", "harmonics", "spectrum", "noise", "drumset",
+        "chip", "chipwave", "customchip", "soundfont", "fm", "fm4op", "fm6op", "pwm", "supersaw", "pickedstring", "harmonics", "spectrum", "noise", "drumset",
         "featured", "novelty",
         "retro", "keys", "idiophone", "guitar", "picked", "distortion", "bellows", "string", "vocal", "brass", "reed", "flute", "pad",
         "drums", "kick", "snare", "hihat",
@@ -1365,6 +1365,7 @@ var EditorConfig = (function (exports) {
                 { name: TypePresets[8], customType: 8 },
                 { name: TypePresets[9], customType: 9 },
                 { name: TypePresets[11], customType: 11 },
+                { name: TypePresets[12], customType: 12 },
             ])
         },
         {

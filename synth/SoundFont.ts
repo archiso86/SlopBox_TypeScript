@@ -1,11 +1,6 @@
 import { performIntegral } from "./SynthConfig";
 
-export interface SoundFontLoadOptions {
-    readonly forceSampleIndex: number | null;
-    readonly useEnvelopes: boolean;
-    readonly useFilters: boolean;
-    readonly useLfo: boolean;
-}
+export interface SoundFontLoadOptions {}
 
 export interface SoundFontSample {
     readonly name: string;
@@ -29,6 +24,7 @@ export interface SoundFontZone {
     readonly coarseTune: number;
     readonly loopStart: number;
     readonly loopEnd: number;
+    readonly loopMode: number;
     readonly attackSeconds: number;
     readonly releaseSeconds: number;
     readonly filterCutoffHz: number | null;
@@ -151,11 +147,11 @@ function parseSoundFont(url: string, data: Uint8Array, options: SoundFontLoadOpt
     const shdr: SampleHeader[] = normalizeSampleHeaders(parseShdr(requireListChunk(view, 0, data.length, "pdta", "shdr"), view, data), smpl);
     validateSoundFontTables(phdr, pbag, pgen, inst, ibag, igen, shdr);
     const samples: SoundFontSample[] = shdr.slice(0, -1).map(header => makeSample(header, smpl, view));
-    let instruments: SoundFontInstrument[] = createPresetInstruments(phdr, pbag, pgen, inst, ibag, igen, shdr, options);
+    let instruments: SoundFontInstrument[] = createPresetInstruments(phdr, pbag, pgen, inst, ibag, igen, shdr);
     if (instruments.length == 0) {
         instruments = [];
         for (let i: number = 0; i < inst.length - 1; i++) {
-            const zones: SoundFontZone[] = createZones(inst[i], inst[i + 1], ibag, igen, shdr, options);
+            const zones: SoundFontZone[] = createZones(inst[i], inst[i + 1], ibag, igen, shdr);
             if (zones.length > 0) instruments.push({ name: cleanName(inst[i].name), zones: zones });
         }
     }
@@ -163,30 +159,34 @@ function parseSoundFont(url: string, data: Uint8Array, options: SoundFontLoadOpt
     return { url: url, instruments: instruments, samples: samples, options: options };
 }
 
-function createPresetInstruments(phdr: PresetHeader[], pbag: Bag[], pgen: Generator[], inst: InstrumentHeader[], ibag: Bag[], igen: Generator[], shdr: SampleHeader[], options: SoundFontLoadOptions): SoundFontInstrument[] {
+function createPresetInstruments(phdr: PresetHeader[], pbag: Bag[], pgen: Generator[], inst: InstrumentHeader[], ibag: Bag[], igen: Generator[], shdr: SampleHeader[]): SoundFontInstrument[] {
     const instruments: SoundFontInstrument[] = [];
     for (let presetIndex: number = 0; presetIndex < phdr.length - 1; presetIndex++) {
         const preset: PresetHeader = phdr[presetIndex];
         const nextPreset: PresetHeader = phdr[presetIndex + 1];
         const zones: SoundFontZone[] = [];
+        const presetGlobal: Map<number, Generator> = new Map();
         for (let bagIndex: number = preset.bagIndex; bagIndex < nextPreset.bagIndex; bagIndex++) {
             const zoneGenerators: Generator[] = getZoneGenerators(bagIndex, pbag, pgen);
             const instrumentGenerator: Generator | undefined = zoneGenerators.find(generator => generator.oper == GeneratorType.instrument);
-            if (instrumentGenerator == null) continue;
+            if (instrumentGenerator == null) {
+                for (const generator of zoneGenerators) presetGlobal.set(generator.oper, generator);
+                continue;
+            }
             const instrumentIndex: number = instrumentGenerator.amount;
             const header: InstrumentHeader | undefined = inst[instrumentIndex];
             const nextHeader: InstrumentHeader | undefined = inst[instrumentIndex + 1];
             if (header == null || nextHeader == null) continue;
-            zones.push(...createZones(header, nextHeader, ibag, igen, shdr, options));
+            zones.push(...createZones(header, nextHeader, ibag, igen, shdr, presetGlobal));
         }
         if (zones.length > 0) instruments.push({ name: cleanName(preset.name), zones: zones });
     }
     return instruments;
 }
 
-function createZones(header: InstrumentHeader, nextHeader: InstrumentHeader, ibag: Bag[], igen: Generator[], shdr: SampleHeader[], options: SoundFontLoadOptions): SoundFontZone[] {
+function createZones(header: InstrumentHeader, nextHeader: InstrumentHeader, ibag: Bag[], igen: Generator[], shdr: SampleHeader[], presetGlobal?: Map<number, Generator>): SoundFontZone[] {
     const zones: SoundFontZone[] = [];
-    const global: Map<number, Generator> = new Map();
+    const global: Map<number, Generator> = new Map(presetGlobal);
     const startBagIndex: number = clamp(0, ibag.length - 1, header.bagIndex);
     const endBagIndex: number = clamp(startBagIndex, ibag.length - 1, nextHeader.bagIndex);
     for (let bagIndex: number = startBagIndex; bagIndex < endBagIndex; bagIndex++) {
@@ -196,7 +196,7 @@ function createZones(header: InstrumentHeader, nextHeader: InstrumentHeader, iba
             for (const generator of zoneGenerators) global.set(generator.oper, generator);
             continue;
         }
-        const sampleIndex: number = options.forceSampleIndex != null ? options.forceSampleIndex : sampleIdGenerator.amount;
+        const sampleIndex: number = sampleIdGenerator.amount;
         if (sampleIndex < 0 || sampleIndex >= shdr.length - 1) continue;
         const sampleHeader: SampleHeader | undefined = shdr[sampleIndex];
         if (sampleHeader == null) continue;
@@ -218,10 +218,11 @@ function createZones(header: InstrumentHeader, nextHeader: InstrumentHeader, iba
             coarseTune: generatorAmount(get(GeneratorType.coarseTune), 0),
             loopStart: loopStart,
             loopEnd: loopEnd,
-            attackSeconds: options.useEnvelopes ? timecentsToSeconds(generatorAmount(get(GeneratorType.attackVolEnv), -12000)) : 0,
-            releaseSeconds: options.useEnvelopes ? timecentsToSeconds(generatorAmount(get(GeneratorType.releaseVolEnv), -12000)) : 0,
-            filterCutoffHz: options.useFilters ? centsToHz(generatorAmount(get(GeneratorType.initialFilterFc), 13500)) : null,
-            vibratoCents: options.useLfo ? generatorAmount(get(GeneratorType.modLfoToPitch), 0) : 0,
+            loopMode: soundFontSampleModeToChipLoopMode(generatorAmount(get(GeneratorType.sampleModes), 0)),
+            attackSeconds: timecentsToSeconds(generatorAmount(get(GeneratorType.attackVolEnv), -12000)),
+            releaseSeconds: timecentsToSeconds(generatorAmount(get(GeneratorType.releaseVolEnv), -12000)),
+            filterCutoffHz: centsToHz(generatorAmount(get(GeneratorType.initialFilterFc), 13500)),
+            vibratoCents: generatorAmount(get(GeneratorType.modLfoToPitch), 0),
         });
     }
     return zones;
@@ -435,6 +436,14 @@ function timecentsToSeconds(timecents: number): number {
 
 function centsToHz(cents: number): number {
     return 8.176 * Math.pow(2, cents / 1200);
+}
+
+function soundFontSampleModeToChipLoopMode(sampleMode: number): number {
+    switch (sampleMode & 3) {
+        case 1: return 0;
+        case 3: return 4;
+        default: return 2;
+    }
 }
 
 function clamp(min: number, max: number, value: number): number {

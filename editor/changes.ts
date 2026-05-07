@@ -5551,7 +5551,6 @@ export class ChangeSoundFontInstrument extends Change {
         const instrument: Instrument = doc.song.channels[doc.channel].instruments[doc.getCurrentInstrument()];
         if (instrument.soundFontInstrumentIndex != newValue) {
             instrument.soundFontInstrumentIndex = Math.max(0, newValue | 0);
-            instrument.soundFontForceSampleIndex = -1;
             instrument.preset = instrument.type;
             doc.notifier.changed();
             this._didSomething();
@@ -5559,13 +5558,12 @@ export class ChangeSoundFontInstrument extends Change {
     }
 }
 
-export class ChangeSoundFontForceSample extends Change {
-    constructor(doc: SongDocument, newValue: number) {
+export class ChangeSoundFontForceOneshot extends Change {
+    constructor(doc: SongDocument, newValue: boolean) {
         super();
         const instrument: Instrument = doc.song.channels[doc.channel].instruments[doc.getCurrentInstrument()];
-        const sampleIndex: number = newValue < 0 ? -1 : newValue | 0;
-        if (instrument.soundFontForceSampleIndex != sampleIndex) {
-            instrument.soundFontForceSampleIndex = sampleIndex;
+        if (instrument.soundFontForceOneshot != newValue) {
+            instrument.soundFontForceOneshot = newValue;
             instrument.preset = instrument.type;
             doc.notifier.changed();
             this._didSomething();
