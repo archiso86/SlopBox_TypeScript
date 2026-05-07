@@ -10298,6 +10298,7 @@ export class Synth {
     public static readonly tempFilterStartCoefficients: FilterCoefficients = new FilterCoefficients();
     public static readonly tempFilterEndCoefficients: FilterCoefficients = new FilterCoefficients();
     private tempDrumSetControlPoint: FilterControlPoint = new FilterControlPoint();
+    private tempSoundFontControlPoint: FilterControlPoint = new FilterControlPoint();
     public tempFrequencyResponse: FrequencyResponse = new FrequencyResponse();
     public loopBarStart: number = -1;
     public loopBarEnd: number = -1;
@@ -10314,6 +10315,7 @@ export class Synth {
     private static readonly supersawFunctionCache: Function[] = [];
     private static readonly harmonicsFunctionCache: Function[] = [];
     private static readonly loopableChipFunctionCache: Function[] = Array(Config.unisonVoicesMax + 1).fill(undefined); //For loopable chips, we have a matrix where the rows represent voices and the columns represent loop types
+    private static readonly soundFontZoneMatchCache: WeakMap<SoundFontInstrument, Map<number, SoundFontZone[]>> = new WeakMap();
 
     public readonly channels: ChannelState[] = [];
     private readonly tonePool: Deque<Tone> = new Deque<Tone>();
@@ -12325,39 +12327,59 @@ export class Synth {
         return 1.0 / ((chordSize - 1) * 0.25 + 1.0);
     }
 
-    private static selectSoundFontZone(instrument: Instrument, tone: Tone): { zone: SoundFontZone | null, sample: SoundFontSample | null, midiPitch: number, rootKey: number } {
-        const zones: SoundFontZone[] = Synth.getMatchingSoundFontZones(instrument, tone.pitches[0], tone.note);
+    private static selectSoundFontZone(instrument: Instrument, tone: Tone): { zone: SoundFontZone | null, sample: SoundFontSample | null, rootKey: number } {
         const bank: SoundFontBank | undefined = getSoundFont(instrument.soundFontUrl);
-        const zone: SoundFontZone | null = zones.length <= tone.soundFontLayer ? null : zones[tone.soundFontLayer];
+        const sfInstrument: SoundFontInstrument | undefined = bank == null ? undefined : bank.instruments[instrument.soundFontInstrumentIndex];
+        const midiPitch: number = Math.max(0, Math.min(127, Math.round(tone.pitches[0] + 12)));
+        const velocity: number = Synth.getSoundFontVelocity(tone.note);
+        const zones: SoundFontZone[] = sfInstrument == null || bank == null ? [] : Synth.getMatchingSoundFontZones(sfInstrument, bank, midiPitch, velocity);
+        const zone: SoundFontZone | null = zones[tone.soundFontLayer] || null;
         const sample: SoundFontSample | null = zone == null || bank == null ? null : bank.samples[zone.sampleIndex];
         return {
             zone: zone,
             sample: sample,
-            midiPitch: Math.max(0, Math.min(127, Math.round(tone.pitches[0] + 12))),
             rootKey: zone == null ? 60 : zone.rootKey,
         };
     }
 
     private static countMatchingSoundFontZones(instrument: Instrument, pitch: number, note: Note | null): number {
-        return Math.max(1, Synth.getMatchingSoundFontZones(instrument, pitch, note).length);
-    }
-
-    private static getMatchingSoundFontZones(instrument: Instrument, pitch: number, note: Note | null): SoundFontZone[] {
         const bank: SoundFontBank | undefined = getSoundFont(instrument.soundFontUrl);
         const sfInstrument: SoundFontInstrument | undefined = bank == null ? undefined : bank.instruments[instrument.soundFontInstrumentIndex];
         const midiPitch: number = Math.max(0, Math.min(127, Math.round(pitch + 12)));
-        let velocity: number = 127;
-        if (note != null && note.pins.length > 0) {
-            velocity = Math.max(0, Math.min(127, Math.round(127 * note.pins[0].size / Config.noteSizeMax)));
+        const velocity: number = Synth.getSoundFontVelocity(note);
+        if (sfInstrument == null || bank == null) return 1;
+        return Math.max(1, Synth.getMatchingSoundFontZones(sfInstrument, bank, midiPitch, velocity).length);
+    }
+
+    private static getMatchingSoundFontZones(sfInstrument: SoundFontInstrument, bank: SoundFontBank, midiPitch: number, velocity: number): SoundFontZone[] {
+        let cache: Map<number, SoundFontZone[]> | undefined = Synth.soundFontZoneMatchCache.get(sfInstrument);
+        if (cache == null) {
+            cache = new Map();
+            Synth.soundFontZoneMatchCache.set(sfInstrument, cache);
         }
-        if (sfInstrument == null || bank == null) return [];
-        return sfInstrument.zones.filter(zone =>
-            midiPitch >= zone.keyMin
+        const key: number = (midiPitch << 7) | velocity;
+        let zones: SoundFontZone[] | undefined = cache.get(key);
+        if (zones != null) return zones;
+
+        zones = [];
+        for (const zone of sfInstrument.zones) {
+            if (Synth.soundFontZoneMatches(zone, bank, midiPitch, velocity)) zones.push(zone);
+        }
+        cache.set(key, zones);
+        return zones;
+    }
+
+    private static getSoundFontVelocity(note: Note | null): number {
+        if (note == null || note.pins.length <= 0) return 127;
+        return Math.max(0, Math.min(127, Math.round(127 * note.pins[0].size / Config.noteSizeMax)));
+    }
+
+    private static soundFontZoneMatches(zone: SoundFontZone, bank: SoundFontBank, midiPitch: number, velocity: number): boolean {
+        return midiPitch >= zone.keyMin
             && midiPitch <= zone.keyMax
             && velocity >= zone.velocityMin
             && velocity <= zone.velocityMax
-            && bank.samples[zone.sampleIndex] != null
-        );
+            && bank.samples[zone.sampleIndex] != null;
     }
 
     private computeTone(song: Song, channelIndex: number, samplesPerTick: number, tone: Tone, released: boolean, shouldFadeOutFast: boolean): void {
@@ -12451,16 +12473,7 @@ export class Synth {
             soundFontZone = soundFontSelection.zone;
             soundFontSample = soundFontSelection.sample;
             if (soundFontZone == null || soundFontSample == null) {
-                tone.soundFontSilent = true;
-                instrumentState.awake = false;
             } else {
-                tone.soundFontSilent = false;
-                tone.soundFontWave = soundFontSample.integratedSamples;
-                tone.soundFontRawWave = soundFontSample.rawSamples;
-                tone.soundFontLoopStart = soundFontZone.loopStart;
-                tone.soundFontLoopEnd = soundFontZone.loopEnd;
-                tone.soundFontLoopMode = instrument.soundFontForceOneshot ? 2 : soundFontZone.loopMode;
-                tone.soundFontSampleRate = soundFontSample.sampleRate;
                 basePitch += -96.37 + Math.log2(soundFontSample.integratedSamples.length / soundFontSample.sampleRate) * -12 - (-60 + soundFontSelection.rootKey);
                 soundFontTune = soundFontZone.coarseTune + (soundFontZone.fineTune + soundFontSample.pitchCorrection) / 100;
             }
@@ -12862,7 +12875,7 @@ export class Synth {
         }
         if (soundFontZone != null && soundFontZone.filterCutoffHz != null) {
             const filterIndex: number = tone.noteFilterCount;
-            const point: FilterControlPoint = new FilterControlPoint();
+            const point: FilterControlPoint = this.tempSoundFontControlPoint;
             point.type = FilterType.lowPass;
             point.freq = FilterControlPoint.getSettingValueFromHz(soundFontZone.filterCutoffHz);
             point.gain = Config.filterGainCenter;

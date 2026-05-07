@@ -1855,11 +1855,13 @@ export class ChangePatternNumbers extends Change {
     constructor(doc: SongDocument, value: number, startBar: number, startChannel: number, width: number, height: number) {
         super();
         if (value > doc.song.patternsPerChannel) throw new Error("invalid pattern");
+        let changed: boolean = false;
 
         for (let bar: number = startBar; bar < startBar + width; bar++) {
             for (let channelIndex: number = startChannel; channelIndex < startChannel + height; channelIndex++) {
                 if (doc.song.channels[channelIndex].bars[bar] != value) {
                     doc.song.channels[channelIndex].bars[bar] = value;
+                    changed = true;
                     this._didSomething();
                 }
             }
@@ -1868,15 +1870,15 @@ export class ChangePatternNumbers extends Change {
         //Make mod channels shift viewed instrument over when pattern numbers change
         if (startChannel >= doc.song.pitchChannelCount + doc.song.noiseChannelCount) {
             const pattern: Pattern | null = doc.getCurrentPattern();
-            if (pattern != null) {
-                doc.viewedInstrument[startChannel] = pattern.instruments[0];
-            }
-            else {
-                doc.viewedInstrument[startChannel] = 0;
+            const viewedInstrument: number = pattern == null ? 0 : pattern.instruments[0];
+            if (doc.viewedInstrument[startChannel] != viewedInstrument) {
+                doc.viewedInstrument[startChannel] = viewedInstrument;
+                changed = true;
+                this._didSomething();
             }
         }
 
-        doc.notifier.changed();
+        if (changed) doc.notifier.changed();
     }
 }
 
@@ -3760,15 +3762,20 @@ export class ChangeModChannel extends Change {
         if (useInstrument != undefined)
             instrument = useInstrument;
 
+        const oldModulator: number = instrument.modulators[mod];
+        const oldChannel: number = instrument.modChannels[mod];
+
         // None, or swapping from song to instrument/vice-versa
-        if (index == 0 || (Config.modulators[instrument.modulators[mod]].forSong && index >= 2) || (!Config.modulators[instrument.modulators[mod]].forSong && index < 2)) {
+        if (index == 0 || (Config.modulators[oldModulator].forSong && index >= 2) || (!Config.modulators[oldModulator].forSong && index < 2)) {
             instrument.modulators[mod] = Config.modulators.dictionary["none"].index;
         }
 
         instrument.modChannels[mod] = index - 2;
 
-        doc.notifier.changed();
-        this._didSomething();
+        if (oldModulator != instrument.modulators[mod] || oldChannel != instrument.modChannels[mod]) {
+            doc.notifier.changed();
+            this._didSomething();
+        }
     }
 }
 

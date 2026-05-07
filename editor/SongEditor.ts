@@ -1120,6 +1120,7 @@ export class SongEditor {
     private readonly _soundFontForceOneshotBox = input({ type: "checkbox", style: "width: 1em; padding: 0; margin-left: 0.4em; margin-right: 4em;" });
     private readonly _soundFontInstrumentSelectRow: HTMLDivElement = div({ class: "selectRow" }, span({ class: "tip" }, "Instrument: "), div({ class: "selectContainer" }, this._soundFontInstrumentSelect));
     private readonly _soundFontForceOneshotRow: HTMLDivElement = div({ class: "selectRow" }, span({ class: "tip" }, "Force Oneshot: "), this._soundFontForceOneshotBox);
+    private _soundFontInstrumentSelectOptionsKey: string = "";
     private readonly _visualLoopControlsButton: HTMLButtonElement = button({ style: "margin-left: 0em; padding-left: 0.2em; height: 1.5em; max-width: 12px;", onclick: () => this._openPrompt("visualLoopControls") }, "+");
     private readonly _useChipWaveAdvancedLoopControlsRow: HTMLDivElement = div({ class: "selectRow" }, span({ class: "tip", style: "flex-shrink: 0;", onclick: () => this._openPrompt("loopControls") }, "Loop Controls: "), this._useChipWaveAdvancedLoopControlsBox);
     private readonly _chipWaveLoopModeSelectRow = div({ class: "selectRow" }, span({ class: "tip", style: "font-size: x-small;", onclick: () => this._openPrompt("loopMode") }, "Loop Mode: "), div({ class: "selectContainer" }, this._chipWaveLoopModeSelect));
@@ -2910,6 +2911,7 @@ export class SongEditor {
             if (instrument.type == InstrumentType.soundfont) {
                 const bank: SoundFontBank | undefined = getSoundFont(instrument.soundFontUrl);
                 const instrumentOptions: { value: number, name: string }[] = [];
+                let optionsKey: string = "loading:" + instrument.soundFontUrl;
                 if (bank == null) {
                     instrumentOptions.push({ value: 0, name: instrument.soundFontUrl == "" ? "No Soundfont" : "Loading..." });
                 } else {
@@ -2917,8 +2919,12 @@ export class SongEditor {
                         instrumentOptions.push({ value: i, name: bank.instruments[i].name });
                     }
                     if (instrumentOptions.length == 0) instrumentOptions.push({ value: 0, name: "No Instruments" });
+                    optionsKey = "loaded:" + bank.url + ":" + instrumentOptions.map(item => item.name).join("\n");
                 }
-                replaceOptions(this._soundFontInstrumentSelect, instrumentOptions);
+                if (this._soundFontInstrumentSelectOptionsKey != optionsKey) {
+                    replaceOptions(this._soundFontInstrumentSelect, instrumentOptions);
+                    this._soundFontInstrumentSelectOptionsKey = optionsKey;
+                }
                 setSelectedValue(this._soundFontInstrumentSelect, Math.min(instrument.soundFontInstrumentIndex, instrumentOptions.length - 1));
 
                 this._soundFontInstrumentSelectRow.style.display = "";
@@ -4457,6 +4463,10 @@ export class SongEditor {
                 // close prompt.
                 this.doc.undo();
             }
+            return;
+        }
+
+        if (document.activeElement instanceof HTMLSelectElement) {
             return;
         }
 

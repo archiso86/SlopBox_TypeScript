@@ -27,7 +27,6 @@ cp website/nintaribox_samples.js to_deploy/player
 cp website/index.html to_deploy/
 cp website/favicon.ico to_deploy/
 cp website/icon_maskable_192.png to_deploy/
-cp website/sample_extractor.html to_deploy/
 cp website/beepbox_synth.min.js to_deploy/
 cp website/synth_example.html to_deploy/
 
