@@ -3,7 +3,13 @@ TypeScript music editor derived from BeepBox/JummBox/Ultrabox/SlarmoosBox/JukeeB
 Allows saving made songs to a `.json` file
 
 ---
-# Build Environment
+# Project map
+- `./synth`: Backend music engine
+- `./editor`: Editor + song playback UI
+- `./player`: Music player UI
+- `./website`: Website HTML/JS
+
+# Build environment
 Use `scripts/npm-distrobox.sh`, NOT `npm`
 Creates/reuses persistent Distrobox `slopbox-typescript-node` from `ubuntu:24.04`
 `distrobox.ini` defines `slopbox-typescript-node`

@@ -12503,6 +12503,20 @@ export class Synth {
             }
             // advloop addition
         }
+        if (instrument.type == InstrumentType.soundfont) {
+            if (soundFontZone == null || soundFontSample == null) {
+                tone.soundFontSilent = true;
+                instrumentState.awake = false;
+            } else {
+                tone.soundFontSilent = false;
+                tone.soundFontWave = soundFontSample.integratedSamples;
+                tone.soundFontRawWave = soundFontSample.rawSamples;
+                tone.soundFontLoopStart = soundFontZone.loopStart;
+                tone.soundFontLoopEnd = soundFontZone.loopEnd;
+                tone.soundFontLoopMode = instrument.soundFontForceOneshot ? 2 : soundFontZone.loopMode;
+                tone.soundFontSampleRate = soundFontSample.sampleRate;
+            }
+        }
         tone.freshlyAllocated = false;
 
         for (let i: number = 0; i < Config.maxPitchOrOperatorCount; i++) {
