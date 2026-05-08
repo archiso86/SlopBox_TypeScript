@@ -31,4 +31,4 @@ Write `./MEMORY.md` after debugging work.
 # Rules
 - Always `build-offline` at the end of your turn
 - Avoid messing with internals, this is a fork of an existing project
-- Debug by running code, rather than guessing based on hypothetical code flow
+- Debug by running code and simulating real scenarios, rather than guessing based on hypothetical code flow
