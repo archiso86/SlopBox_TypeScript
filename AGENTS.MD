@@ -21,8 +21,8 @@ Creates/reuses persistent Distrobox `slopbox-typescript-node` from `ubuntu:24.04
 
 ---
 # Memory
-Write MEMORY.md after debugging work.
-- Do not write "Verification" notes in MEMORY.md
+Write `./MEMORY.md` after debugging work.
+- Do not write "Verification" notes in `MEMORY.md`
 
 # Rules
 - Always `build-offline` at the end of your turn
