@@ -2043,12 +2043,13 @@ export class SongEditor {
                 : Math.floor((e.samplesLoaded / e.totalSamples) * 100)
         );
         this._sampleLoadingBar.style.width = `${percent}%`;
-        replacePresetOptions(this._pitchedPresetSelect, false);
-        replacePresetOptions(this._drumPresetSelect, true);
-        const instrument: Instrument = this.doc.song.channels[this.doc.channel].instruments[this.doc.getCurrentInstrument()];
-        setSelectedValue(this._pitchedPresetSelect, instrument.preset, true);
-        setSelectedValue(this._drumPresetSelect, instrument.preset, true);
-        this.doc.notifier.changed();
+        if (e.totalSamples > 0 && e.samplesLoaded >= e.totalSamples) {
+            replacePresetOptions(this._pitchedPresetSelect, false);
+            replacePresetOptions(this._drumPresetSelect, true);
+            const instrument: Instrument = this.doc.song.channels[this.doc.channel].instruments[this.doc.getCurrentInstrument()];
+            setSelectedValue(this._pitchedPresetSelect, instrument.preset, true);
+            setSelectedValue(this._drumPresetSelect, instrument.preset, true);
+        }
     }
 
     private _toggleAlgorithmCanvas(e: Event): void {
@@ -4463,10 +4464,6 @@ export class SongEditor {
                 // close prompt.
                 this.doc.undo();
             }
-            return;
-        }
-
-        if (document.activeElement instanceof HTMLSelectElement) {
             return;
         }
 

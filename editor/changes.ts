@@ -3762,20 +3762,15 @@ export class ChangeModChannel extends Change {
         if (useInstrument != undefined)
             instrument = useInstrument;
 
-        const oldModulator: number = instrument.modulators[mod];
-        const oldChannel: number = instrument.modChannels[mod];
-
         // None, or swapping from song to instrument/vice-versa
-        if (index == 0 || (Config.modulators[oldModulator].forSong && index >= 2) || (!Config.modulators[oldModulator].forSong && index < 2)) {
+        if (index == 0 || (Config.modulators[instrument.modulators[mod]].forSong && index >= 2) || (!Config.modulators[instrument.modulators[mod]].forSong && index < 2)) {
             instrument.modulators[mod] = Config.modulators.dictionary["none"].index;
         }
 
         instrument.modChannels[mod] = index - 2;
 
-        if (oldModulator != instrument.modulators[mod] || oldChannel != instrument.modChannels[mod]) {
-            doc.notifier.changed();
-            this._didSomething();
-        }
+        doc.notifier.changed();
+        this._didSomething();
     }
 }
 
