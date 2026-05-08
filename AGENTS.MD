@@ -22,6 +22,10 @@ Creates/reuses persistent Distrobox `slopbox-typescript-node` from `ubuntu:24.04
 ---
 # Memory
 Write `./MEMORY.md` after debugging work.
+- Recommended headers:
+  - # Bug name (Described by user)
+  - ## Behavior (Described by user)
+  - ## Attempted fixes
 - Do not write "Verification" notes in `MEMORY.md`
 
 # Rules
