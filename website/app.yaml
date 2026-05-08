@@ -33,12 +33,6 @@ handlers:
   http_headers:
     Content-Disposition: "attachment; filename=beepbox_offline.html"
 
-- url: /manifest\.webmanifest
-  static_files: manifest.webmanifest
-  upload: manifest\.webmanifest
-  http_headers:
-    Content-Type: application/manifest+json
-
 - url: /browserconfig\.xml
   static_files: browserconfig.xml
   upload: browserconfig\.xml
