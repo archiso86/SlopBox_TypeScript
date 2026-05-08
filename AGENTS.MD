@@ -1,5 +1,6 @@
 # slopbox
 TypeScript music editor derived from BeepBox/JummBox/Ultrabox/SlarmoosBox/JukeeBox
+Hosted on GitHub Pages
 Allows saving made songs to a `.json` file
 
 # Project map
