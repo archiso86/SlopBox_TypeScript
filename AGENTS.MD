@@ -21,16 +21,17 @@ Use `scripts/npm-distrobox.sh`, NOT `npm`
 ```
 
 ---
-# Debugging
-Debugging should focus on reverting or changing commits by `archiso86`.
+# Rules
+- `build` and `build-offline` at the end of your turn to apply changes
+- Avoid messing with internals, this is a fork of an existing project
+
+## Debugging
+- Debugging should focus on reverting or changing commits by `archiso86`.
+- Do not write "Verification" notes in `MEMORY.md`
+- Debug by running code and simulations, rather than guessing based on hypothetical code flow
+
 Write `./MEMORY.md` after debugging work.
 - Recommended headers:
-  - # Bug name (Described by user)
-  - ## Behavior (Described by user)
-  - ## Attempted fixes
-- Do not write "Verification" notes in `MEMORY.md`
-
-# Rules
-- Always `build-offline` at the end of your turn
-- Avoid messing with internals, this is a fork of an existing project
-- Debug by running code and simulations, rather than guessing based on hypothetical code flow
+  - `# Bug name (Described by user)`
+  - `## Behavior (Described by user)`
+  - `## Attempted fixes`

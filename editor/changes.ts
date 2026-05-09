@@ -692,7 +692,7 @@ export class ChangePreset extends Change {
             const preset: Preset | null = preset1 ?? EditorConfig.valueToPreset(newValue);
             if (preset != null) {
                 if (preset.customType != undefined) {
-                    if (preset.customType == InstrumentType.soundfont) {
+                    if (preset.customType == InstrumentType.soundfont || preset.customType == InstrumentType.soundfontDrumset) {
                         instrument.setTypeAndReset(preset.customType, doc.song.getChannelIsNoise(doc.channel), doc.song.getChannelIsMod(doc.channel));
                     } else {
                         instrument.type = preset.customType;
@@ -5548,11 +5548,56 @@ export class ChangeChipWave extends Change {
 }
 
 export class ChangeSoundFontInstrument extends Change {
-    constructor(doc: SongDocument, newValue: number) {
+    constructor(doc: SongDocument, newUrl: string, newValue: number) {
         super();
         const instrument: Instrument = doc.song.channels[doc.channel].instruments[doc.getCurrentInstrument()];
-        if (instrument.soundFontInstrumentIndex != newValue) {
+        if (instrument.soundFontUrl != newUrl || instrument.soundFontInstrumentIndex != newValue) {
+            instrument.soundFontUrl = newUrl;
             instrument.soundFontInstrumentIndex = Math.max(0, newValue | 0);
+            instrument.preset = instrument.type;
+            doc.notifier.changed();
+            this._didSomething();
+        }
+    }
+}
+
+export class ChangeSoundFontSample extends Change {
+    constructor(doc: SongDocument, newUrl: string, newValue: number) {
+        super();
+        const instrument: Instrument = doc.song.channels[doc.channel].instruments[doc.getCurrentInstrument()];
+        if (instrument.soundFontUrl != newUrl || instrument.soundFontSampleIndex != newValue) {
+            instrument.soundFontUrl = newUrl;
+            instrument.soundFontSampleIndex = Math.max(0, newValue | 0);
+            instrument.preset = instrument.type;
+            doc.notifier.changed();
+            this._didSomething();
+        }
+    }
+}
+
+export class ChangeSoundFontDrumsetInstrument extends Change {
+    constructor(doc: SongDocument, drumIndex: number, newUrl: string, newValue: number, newSampleUrl: string, newSampleValue: number) {
+        super();
+        const instrument: Instrument = doc.song.channels[doc.channel].instruments[doc.getCurrentInstrument()];
+        if (instrument.soundFontDrumsetInstrumentUrls[drumIndex] != newUrl || instrument.soundFontDrumsetInstrumentIndices[drumIndex] != newValue || instrument.soundFontDrumsetSampleUrls[drumIndex] != newSampleUrl || instrument.soundFontDrumsetSampleIndices[drumIndex] != newSampleValue) {
+            instrument.soundFontDrumsetInstrumentUrls[drumIndex] = newUrl;
+            instrument.soundFontDrumsetInstrumentIndices[drumIndex] = Math.max(0, newValue | 0);
+            instrument.soundFontDrumsetSampleUrls[drumIndex] = newSampleUrl;
+            instrument.soundFontDrumsetSampleIndices[drumIndex] = Math.max(0, newSampleValue | 0);
+            instrument.preset = instrument.type;
+            doc.notifier.changed();
+            this._didSomething();
+        }
+    }
+}
+
+export class ChangeSoundFontDrumsetSample extends Change {
+    constructor(doc: SongDocument, drumIndex: number, newUrl: string, newValue: number) {
+        super();
+        const instrument: Instrument = doc.song.channels[doc.channel].instruments[doc.getCurrentInstrument()];
+        if (instrument.soundFontDrumsetSampleUrls[drumIndex] != newUrl || instrument.soundFontDrumsetSampleIndices[drumIndex] != newValue) {
+            instrument.soundFontDrumsetSampleUrls[drumIndex] = newUrl;
+            instrument.soundFontDrumsetSampleIndices[drumIndex] = Math.max(0, newValue | 0);
             instrument.preset = instrument.type;
             doc.notifier.changed();
             this._didSomething();

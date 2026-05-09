@@ -16,7 +16,7 @@ import { EuclideanRhythmPrompt } from "./EuclidgenRhythmPrompt";
 import { ExportPrompt } from "./ExportPrompt";
 import "./Layout"; // Imported here for the sake of ensuring this code is transpiled early.
 import { Instrument, Channel, Synth } from "../synth/synth";
-import { getSoundFont, SoundFontBank } from "../synth/SoundFont";
+import { getLoadedSoundFonts, getSoundFont, SoundFontBank } from "../synth/SoundFont";
 import { HTML, SVG } from "imperative-html/dist/esm/elements-strict";
 import { Preferences } from "./Preferences";
 import { HarmonicsEditor, HarmonicsEditorPrompt } from "./HarmonicsEditor";
@@ -47,7 +47,7 @@ import { SpectrumEditor, SpectrumEditorPrompt } from "./SpectrumEditor";
 import { CustomThemePrompt } from "./CustomThemePrompt";
 import { ThemePrompt } from "./ThemePrompt";
 import { TipPrompt } from "./TipPrompt";
-import { ChangeTempo, ChangeKeyOctave, ChangeChorus, ChangeEchoDelay, ChangeEchoSustain, ChangeReverb, ChangeVolume, ChangePan, ChangePatternSelection, ChangePatternsPerChannel, ChangePatternNumbers, ChangeSupersawDynamism, ChangeSupersawSpread, ChangeSupersawShape, ChangePulseWidth, ChangeFeedbackAmplitude, ChangeOperatorAmplitude, ChangeOperatorFrequency, ChangeDrumsetEnvelope, ChangePasteInstrument, ChangePreset, pickRandomPresetValue, ChangeRandomGeneratedInstrument, ChangeEQFilterType, ChangeNoteFilterType, ChangeEQFilterSimpleCut, ChangeEQFilterSimplePeak, ChangeNoteFilterSimpleCut, ChangeNoteFilterSimplePeak, ChangeScale, ChangeDetectKey, ChangeKey, ChangeVisualKey, ChangeRhythm, ChangeFeedbackType, ChangeAlgorithm, ChangeChipWave, ChangeNoiseWave, ChangeTransition, ChangeToggleEffects, ChangeVibrato, ChangeUnison, ChangeChord, ChangeSong, ChangePitchShift, ChangeDetune, ChangeDistortion, ChangeStringSustain, ChangeBitcrusherFreq, ChangeBitcrusherQuantization, ChangeAddEnvelope, ChangeEnvelopeSpeed, ChangeAddChannelInstrument, ChangeRemoveChannelInstrument, ChangeCustomWave, ChangeOperatorWaveform, ChangeOperatorPulseWidth, ChangeSongTitle, ChangeVibratoDepth, ChangeVibratoSpeed, ChangeVibratoDelay, ChangeVibratoType, ChangePanDelay, ChangeArpeggioSpeed, ChangeFastTwoNoteArp, ChangeClicklessTransition, ChangeAliasing, ChangeSetPatternInstruments, ChangeHoldingModRecording, ChangeChipWavePlayBackwards, ChangeChipWaveStartOffset, ChangeChipWaveLoopEnd, ChangeChipWaveLoopStart, ChangeChipWaveLoopMode, ChangeChipWaveUseAdvancedLoopControls, ChangeSoundFontInstrument, ChangeSoundFontForceOneshot, ChangeDecimalOffset, ChangeUnisonVoices, ChangeUnisonSpread, ChangeUnisonOffset, ChangeUnisonExpression, ChangeUnisonSign, Change6OpFeedbackType, Change6OpAlgorithm, ChangeCustomAlgorythmorFeedback, ChangeRingMod, ChangeRingModHz, ChangeRingModChipWave, ChangeRingModPulseWidth, ChangeGranular, ChangeGrainSize, ChangeGrainAmounts, ChangeGrainRange, ChangeMonophonicTone, ChangePhaserMix, ChangePhaserFreq, ChangePhaserFeedback, ChangePhaserStages, ChangeInvertWave, ChangeUpperLimit, ChangeLowerLimit, pickNextPresetValue } from "./changes";
+import { ChangeTempo, ChangeKeyOctave, ChangeChorus, ChangeEchoDelay, ChangeEchoSustain, ChangeReverb, ChangeVolume, ChangePan, ChangePatternSelection, ChangePatternsPerChannel, ChangePatternNumbers, ChangeSupersawDynamism, ChangeSupersawSpread, ChangeSupersawShape, ChangePulseWidth, ChangeFeedbackAmplitude, ChangeOperatorAmplitude, ChangeOperatorFrequency, ChangeDrumsetEnvelope, ChangePasteInstrument, ChangePreset, pickRandomPresetValue, ChangeRandomGeneratedInstrument, ChangeEQFilterType, ChangeNoteFilterType, ChangeEQFilterSimpleCut, ChangeEQFilterSimplePeak, ChangeNoteFilterSimpleCut, ChangeNoteFilterSimplePeak, ChangeScale, ChangeDetectKey, ChangeKey, ChangeVisualKey, ChangeRhythm, ChangeFeedbackType, ChangeAlgorithm, ChangeChipWave, ChangeNoiseWave, ChangeTransition, ChangeToggleEffects, ChangeVibrato, ChangeUnison, ChangeChord, ChangeSong, ChangePitchShift, ChangeDetune, ChangeDistortion, ChangeStringSustain, ChangeBitcrusherFreq, ChangeBitcrusherQuantization, ChangeAddEnvelope, ChangeEnvelopeSpeed, ChangeAddChannelInstrument, ChangeRemoveChannelInstrument, ChangeCustomWave, ChangeOperatorWaveform, ChangeOperatorPulseWidth, ChangeSongTitle, ChangeVibratoDepth, ChangeVibratoSpeed, ChangeVibratoDelay, ChangeVibratoType, ChangePanDelay, ChangeArpeggioSpeed, ChangeFastTwoNoteArp, ChangeClicklessTransition, ChangeAliasing, ChangeSetPatternInstruments, ChangeHoldingModRecording, ChangeChipWavePlayBackwards, ChangeChipWaveStartOffset, ChangeChipWaveLoopEnd, ChangeChipWaveLoopStart, ChangeChipWaveLoopMode, ChangeChipWaveUseAdvancedLoopControls, ChangeSoundFontInstrument, ChangeSoundFontSample, ChangeSoundFontDrumsetInstrument, ChangeSoundFontDrumsetSample, ChangeSoundFontForceOneshot, ChangeDecimalOffset, ChangeUnisonVoices, ChangeUnisonSpread, ChangeUnisonOffset, ChangeUnisonExpression, ChangeUnisonSign, Change6OpFeedbackType, Change6OpAlgorithm, ChangeCustomAlgorythmorFeedback, ChangeRingMod, ChangeRingModHz, ChangeRingModChipWave, ChangeRingModPulseWidth, ChangeGranular, ChangeGrainSize, ChangeGrainAmounts, ChangeGrainRange, ChangeMonophonicTone, ChangePhaserMix, ChangePhaserFreq, ChangePhaserFeedback, ChangePhaserStages, ChangeInvertWave, ChangeUpperLimit, ChangeLowerLimit, pickNextPresetValue } from "./changes";
 
 import { TrackEditor } from "./TrackEditor";
 import { oscilloscopeCanvas } from "../global/Oscilloscope";
@@ -96,6 +96,7 @@ function buildPresetOptions(isNoise: boolean, idSet: string): HTMLSelectElement 
         InstrumentType.noise,
         InstrumentType.drumset,
         InstrumentType.soundfont,
+        InstrumentType.soundfontDrumset,
     ];
     const customTypeGroup: HTMLElement = optgroup({ label: "Types ▾" });
     for (const instrumentType of customTypes) {
@@ -174,23 +175,57 @@ function buildPresetOptions(isNoise: boolean, idSet: string): HTMLSelectElement 
     return menu;
 }
 
-function setSelectedValue(menu: HTMLSelectElement, value: number, isSelect2: boolean = false): void {
+function setSelectedValue(menu: HTMLSelectElement, value: number | string, isSelect2: boolean = false): void {
     const stringValue = value.toString();
     if (menu.value != stringValue) {
         menu.value = stringValue;
 
         // Change select2 value, if this select is a member of that class.
         if (isSelect2) {
-            $(menu).val(value).trigger('change.select2');
+            $(menu).val(stringValue).trigger('change.select2');
         }
     }
 }
 
-function replaceOptions(menu: HTMLSelectElement, items: ReadonlyArray<{ value: number, name: string }>): void {
+function replaceOptions(menu: HTMLSelectElement, items: ReadonlyArray<{ value: number | string, name: string }>): void {
     while (menu.firstChild != null) menu.removeChild(menu.firstChild);
     for (const item of items) {
         menu.appendChild(option({ value: item.value }, item.name));
     }
+}
+
+function encodeSoundFontSelection(url: string, index: number): string {
+    return encodeURIComponent(url) + ":" + Math.max(0, index | 0);
+}
+
+function decodeSoundFontSelection(value: string): { url: string, index: number } {
+    const separatorIndex: number = value.lastIndexOf(":");
+    if (separatorIndex == -1) return { url: "", index: Math.max(0, parseInt(value) | 0) };
+    return {
+        url: decodeURIComponent(value.substring(0, separatorIndex)),
+        index: Math.max(0, parseInt(value.substring(separatorIndex + 1)) | 0),
+    };
+}
+
+function displaySoundFontUrl(url: string): string {
+    const withoutQuery: string = decodeURIComponent(url.split(/[?#]/)[0]);
+    const lastSlash: number = withoutQuery.lastIndexOf("/");
+    const fileName: string = lastSlash == -1 ? withoutQuery : withoutQuery.substring(lastSlash + 1);
+    return fileName.replace(/\.sf2$/i, "");
+}
+
+function getSoundFontDrumsetSampleOptions(url: string, instrumentIndex: number): { value: string, name: string }[] {
+    const bank: SoundFontBank | undefined = getSoundFont(url);
+    if (bank == null) return [{ value: encodeSoundFontSelection(url, 0), name: url == "" ? "No Soundfont" : "Loading..." }];
+    const sfInstrument = bank.instruments[instrumentIndex];
+    const sampleIndices: number[] = [];
+    if (sfInstrument != null) {
+        for (const zone of sfInstrument.zones) {
+            if (bank.samples[zone.sampleIndex] != null && sampleIndices.indexOf(zone.sampleIndex) == -1) sampleIndices.push(zone.sampleIndex);
+        }
+    }
+    if (sampleIndices.length == 0) return [{ value: encodeSoundFontSelection(url, 0), name: "No Samples" }];
+    return sampleIndices.map(sampleIndex => ({ value: encodeSoundFontSelection(url, sampleIndex), name: bank.samples[sampleIndex].name }));
 }
 
 function replacePresetOptions(menu: HTMLSelectElement, isNoise: boolean): void {
@@ -1117,10 +1152,13 @@ export class SongEditor {
     private readonly _chipWaveSelectRow: HTMLDivElement = div({ class: "selectRow" }, span({ class: "tip", onclick: () => this._openPrompt("chipWave") }, "Wave: "), div({ class: "selectContainer" }, this._chipWaveSelect));
     private readonly _chipNoiseSelectRow: HTMLDivElement = div({ class: "selectRow" }, span({ class: "tip", onclick: () => this._openPrompt("chipNoise") }, "Noise: "), div({ class: "selectContainer" }, this._chipNoiseSelect));
     private readonly _soundFontInstrumentSelect: HTMLSelectElement = select();
+    private readonly _soundFontSampleSelect: HTMLSelectElement = select();
     private readonly _soundFontForceOneshotBox = input({ type: "checkbox", style: "width: 1em; padding: 0; margin-left: 0.4em; margin-right: 4em;" });
     private readonly _soundFontInstrumentSelectRow: HTMLDivElement = div({ class: "selectRow" }, span({ class: "tip" }, "Instrument: "), div({ class: "selectContainer" }, this._soundFontInstrumentSelect));
+    private readonly _soundFontSampleSelectRow: HTMLDivElement = div({ class: "selectRow" }, span({ class: "tip" }, "Sample: "), div({ class: "selectContainer" }, this._soundFontSampleSelect));
     private readonly _soundFontForceOneshotRow: HTMLDivElement = div({ class: "selectRow" }, span({ class: "tip" }, "Force Oneshot: "), this._soundFontForceOneshotBox);
     private _soundFontInstrumentSelectOptionsKey: string = "";
+    private _soundFontSampleSelectOptionsKey: string = "";
     private readonly _visualLoopControlsButton: HTMLButtonElement = button({ style: "margin-left: 0em; padding-left: 0.2em; height: 1.5em; max-width: 12px;", onclick: () => this._openPrompt("visualLoopControls") }, "+");
     private readonly _useChipWaveAdvancedLoopControlsRow: HTMLDivElement = div({ class: "selectRow" }, span({ class: "tip", style: "flex-shrink: 0;", onclick: () => this._openPrompt("loopControls") }, "Loop Controls: "), this._useChipWaveAdvancedLoopControlsBox);
     private readonly _chipWaveLoopModeSelectRow = div({ class: "selectRow" }, span({ class: "tip", style: "font-size: x-small;", onclick: () => this._openPrompt("loopMode") }, "Loop Mode: "), div({ class: "selectContainer" }, this._chipWaveLoopModeSelect));
@@ -1286,6 +1324,7 @@ export class SongEditor {
     private readonly _envelopeDropdown: HTMLButtonElement = button({ style: "margin-left:0em; margin-right: 1em; height:1.5em; width: 10px; padding: 0px; font-size: 8px;", onclick: () => this._toggleDropdownMenu(DropdownID.Envelope) }, "▼");
 
     private readonly _drumsetGroup: HTMLElement = div({ class: "editor-controls" });
+    private readonly _soundFontDrumsetGroup: HTMLElement = div({ class: "editor-controls" });
     private readonly _drumsetZoom: HTMLButtonElement = button({ style: "margin-left:0em; padding-left:0.3em; margin-right:0.5em; height:1.5em; max-width: 16px;", onclick: () => this._openPrompt("drumsetSettings") }, "+");
     private readonly _modulatorGroup: HTMLElement = div({ class: "editor-controls" });
     private readonly _modNameRows: HTMLElement[];
@@ -1382,6 +1421,7 @@ export class SongEditor {
         this._chipWaveSelectRow,
         this._chipNoiseSelectRow,
         this._soundFontInstrumentSelectRow,
+        this._soundFontSampleSelectRow,
         this._soundFontForceOneshotRow,
         this._useChipWaveAdvancedLoopControlsRow,
         this._chipWaveLoopModeSelectRow,
@@ -1404,6 +1444,7 @@ export class SongEditor {
         this._spectrumRow,
         this._harmonicsRow,
         this._drumsetGroup,
+        this._soundFontDrumsetGroup,
         this._supersawDynamismRow,
         this._supersawSpreadRow,
         this._supersawShapeRow,
@@ -1671,6 +1712,8 @@ export class SongEditor {
     private readonly _operatorDropdownGroups: HTMLDivElement[] = [];
     readonly _drumsetSpectrumEditors: SpectrumEditor[] = [];
     private readonly _drumsetEnvelopeSelects: HTMLSelectElement[] = [];
+    private readonly _soundFontDrumsetInstrumentSelects: HTMLSelectElement[] = [];
+    private readonly _soundFontDrumsetSampleSelects: HTMLSelectElement[] = [];
     private _showModSliders: boolean[][] = [];
     private _newShowModSliders: boolean[][] = [];
     private _modSliderValues: number[][] = [];
@@ -1801,6 +1844,24 @@ export class SongEditor {
                 this._drumsetSpectrumEditors[i].container,
             );
             this._drumsetGroup.appendChild(row);
+
+            const soundFontInstrumentSelect: HTMLSelectElement = select({ style: "width: 100%;", title: "SoundFont Instrument" });
+            const soundFontSampleSelect: HTMLSelectElement = select({ style: "width: 100%;", title: "SoundFont Sample" });
+            this._soundFontDrumsetInstrumentSelects[i] = soundFontInstrumentSelect;
+            this._soundFontDrumsetSampleSelects[i] = soundFontSampleSelect;
+            soundFontInstrumentSelect.addEventListener("change", () => {
+                const selection = decodeSoundFontSelection(soundFontInstrumentSelect.value);
+                const sampleSelection = decodeSoundFontSelection(getSoundFontDrumsetSampleOptions(selection.url, selection.index)[0].value);
+                this.doc.record(new ChangeSoundFontDrumsetInstrument(this.doc, drumIndex, selection.url, selection.index, sampleSelection.url, sampleSelection.index));
+            });
+            soundFontSampleSelect.addEventListener("change", () => {
+                const selection = decodeSoundFontSelection(soundFontSampleSelect.value);
+                this.doc.record(new ChangeSoundFontDrumsetSample(this.doc, drumIndex, selection.url, selection.index));
+            });
+            this._soundFontDrumsetGroup.appendChild(div({ class: "selectRow" },
+                div({ class: "selectContainer", style: "width: 5em; margin-right: .3em;" }, soundFontInstrumentSelect),
+                div({ class: "selectContainer" }, soundFontSampleSelect),
+            ));
         }
 
         this._modNameRows = [];
@@ -1884,6 +1945,7 @@ export class SongEditor {
         this._feedback6OpTypeSelect.addEventListener("change", this._whenSet6OpFeedbackType);
         this._chipWaveSelect.addEventListener("change", this._whenSetChipWave);
         this._soundFontInstrumentSelect.addEventListener("change", this._whenSetSoundFontInstrument);
+        this._soundFontSampleSelect.addEventListener("change", this._whenSetSoundFontSample);
         this._soundFontForceOneshotBox.addEventListener("change", this._whenSetSoundFontForceOneshot);
         this._ringModWaveSelect.addEventListener("change", this._whenSetRingModChipWave);
         // advloop addition
@@ -2840,7 +2902,9 @@ export class SongEditor {
             this._chipWaveStartOffsetRow.style.display = "none";
             this._chipWavePlayBackwardsRow.style.display = "none";
             this._soundFontInstrumentSelectRow.style.display = "none";
+            this._soundFontSampleSelectRow.style.display = "none";
             this._soundFontForceOneshotRow.style.display = "none";
+            this._soundFontDrumsetGroup.style.display = "none";
             if (instrument.type == InstrumentType.spectrum) {
                 this._chipWaveSelectRow.style.display = "none";
                 // advloop addition
@@ -2887,8 +2951,9 @@ export class SongEditor {
             } else {
                 this._stringSustainRow.style.display = "none";
             }
-            if (instrument.type == InstrumentType.drumset) {
+            if (instrument.type == InstrumentType.drumset || instrument.type == InstrumentType.soundfontDrumset) {
                 this._drumsetGroup.style.display = "";
+                this._soundFontDrumsetGroup.style.display = "none";
                 this._chipWaveSelectRow.style.display = "none";
                 // advloop addition
                 this._useChipWaveAdvancedLoopControlsRow.style.display = "none";
@@ -2899,37 +2964,81 @@ export class SongEditor {
                 this._chipWavePlayBackwardsRow.style.display = "none";
                 // advloop addition
                 this._fadeInOutRow.style.display = "none";
-                for (let i: number = 0; i < Config.drumCount; i++) {
-                    setSelectedValue(this._drumsetEnvelopeSelects[i], instrument.drumsetEnvelopes[i]);
-                    this._drumsetSpectrumEditors[i].render();
+                if (instrument.type == InstrumentType.drumset) {
+                    for (let i: number = 0; i < Config.drumCount; i++) {
+                        setSelectedValue(this._drumsetEnvelopeSelects[i], instrument.drumsetEnvelopes[i]);
+                        this._drumsetSpectrumEditors[i].render();
+                    }
+                } else {
+                    this._drumsetGroup.style.display = "none";
+                    this._soundFontDrumsetGroup.style.display = "";
                 }
             } else {
                 this._drumsetGroup.style.display = "none";
+                this._soundFontDrumsetGroup.style.display = "none";
                 this._fadeInOutRow.style.display = "";
                 this._fadeInOutEditor.render();
             }
 
-            if (instrument.type == InstrumentType.soundfont) {
+            if (instrument.type == InstrumentType.soundfont || instrument.type == InstrumentType.soundfontDrumset) {
                 const bank: SoundFontBank | undefined = getSoundFont(instrument.soundFontUrl);
-                const instrumentOptions: { value: number, name: string }[] = [];
+                const banks: SoundFontBank[] = getLoadedSoundFonts();
+                if (bank != null && !banks.some(item => item.url == bank.url)) banks.push(bank);
+                const instrumentOptions: { value: string, name: string }[] = [];
+                const sampleOptions: { value: string, name: string }[] = [];
                 let optionsKey: string = "loading:" + instrument.soundFontUrl;
-                if (bank == null) {
-                    instrumentOptions.push({ value: 0, name: instrument.soundFontUrl == "" ? "No Soundfont" : "Loading..." });
+                let sampleOptionsKey: string = "loading:" + instrument.soundFontUrl;
+                if (banks.length == 0) {
+                    instrumentOptions.push({ value: encodeSoundFontSelection(instrument.soundFontUrl, 0), name: instrument.soundFontUrl == "" ? "No Soundfont" : "Loading..." });
+                    sampleOptions.push({ value: encodeSoundFontSelection(instrument.soundFontUrl, 0), name: instrument.soundFontUrl == "" ? "No Soundfont" : "Loading..." });
                 } else {
-                    for (let i: number = 0; i < bank.instruments.length; i++) {
-                        instrumentOptions.push({ value: i, name: bank.instruments[i].name });
+                    for (const loadedBank of banks) {
+                        const bankName: string = displaySoundFontUrl(loadedBank.url);
+                        for (let i: number = 0; i < loadedBank.instruments.length; i++) {
+                            instrumentOptions.push({ value: encodeSoundFontSelection(loadedBank.url, i), name: bankName + ": " + loadedBank.instruments[i].name });
+                        }
+                        for (let i: number = 0; i < loadedBank.samples.length; i++) {
+                            sampleOptions.push({ value: encodeSoundFontSelection(loadedBank.url, i), name: bankName + ": " + loadedBank.samples[i].name });
+                        }
                     }
-                    if (instrumentOptions.length == 0) instrumentOptions.push({ value: 0, name: "No Instruments" });
-                    optionsKey = "loaded:" + bank.url + ":" + instrumentOptions.map(item => item.name).join("\n");
+                    const selectedUrls: string[] = [instrument.soundFontUrl];
+                    for (let i: number = 0; i < Config.drumCount; i++) {
+                        selectedUrls.push(instrument.soundFontDrumsetInstrumentUrls[i], instrument.soundFontDrumsetSampleUrls[i]);
+                    }
+                    for (const selectedUrl of selectedUrls) {
+                        if (selectedUrl != "" && getSoundFont(selectedUrl) == null && !instrumentOptions.some(item => decodeSoundFontSelection(item.value).url == selectedUrl)) {
+                            instrumentOptions.push({ value: encodeSoundFontSelection(selectedUrl, 0), name: displaySoundFontUrl(selectedUrl) + ": Loading..." });
+                            sampleOptions.push({ value: encodeSoundFontSelection(selectedUrl, 0), name: displaySoundFontUrl(selectedUrl) + ": Loading..." });
+                        }
+                    }
+                    if (instrumentOptions.length == 0) instrumentOptions.push({ value: encodeSoundFontSelection(instrument.soundFontUrl, 0), name: "No Instruments" });
+                    optionsKey = "loaded:" + instrumentOptions.map(item => item.value + "\t" + item.name).join("\n");
+                    if (sampleOptions.length == 0) sampleOptions.push({ value: encodeSoundFontSelection(instrument.soundFontUrl, 0), name: "No Samples" });
+                    sampleOptionsKey = "loaded:" + sampleOptions.map(item => item.value + "\t" + item.name).join("\n");
                 }
                 if (this._soundFontInstrumentSelectOptionsKey != optionsKey) {
                     replaceOptions(this._soundFontInstrumentSelect, instrumentOptions);
+                    for (const select of this._soundFontDrumsetInstrumentSelects) replaceOptions(select, instrumentOptions);
                     this._soundFontInstrumentSelectOptionsKey = optionsKey;
                 }
-                setSelectedValue(this._soundFontInstrumentSelect, Math.min(instrument.soundFontInstrumentIndex, instrumentOptions.length - 1));
+                if (this._soundFontSampleSelectOptionsKey != sampleOptionsKey) {
+                    replaceOptions(this._soundFontSampleSelect, sampleOptions);
+                    this._soundFontSampleSelectOptionsKey = sampleOptionsKey;
+                }
+                setSelectedValue(this._soundFontInstrumentSelect, encodeSoundFontSelection(instrument.soundFontUrl, instrument.soundFontInstrumentIndex));
+                setSelectedValue(this._soundFontSampleSelect, encodeSoundFontSelection(instrument.soundFontUrl, instrument.soundFontSampleIndex));
+                for (let i: number = 0; i < Config.drumCount; i++) {
+                    const drumsetInstrumentUrl: string = instrument.soundFontDrumsetInstrumentUrls[i] || instrument.soundFontUrl;
+                    const drumsetInstrumentIndex: number = instrument.soundFontDrumsetInstrumentIndices[i];
+                    const drumsetSampleUrl: string = instrument.soundFontDrumsetSampleUrls[i] || drumsetInstrumentUrl;
+                    replaceOptions(this._soundFontDrumsetSampleSelects[i], getSoundFontDrumsetSampleOptions(drumsetInstrumentUrl, drumsetInstrumentIndex));
+                    setSelectedValue(this._soundFontDrumsetInstrumentSelects[i], encodeSoundFontSelection(drumsetInstrumentUrl, drumsetInstrumentIndex));
+                    setSelectedValue(this._soundFontDrumsetSampleSelects[i], encodeSoundFontSelection(drumsetSampleUrl, instrument.soundFontDrumsetSampleIndices[i]));
+                }
 
-                this._soundFontInstrumentSelectRow.style.display = "";
-                this._soundFontForceOneshotRow.style.display = "";
+                this._soundFontInstrumentSelectRow.style.display = instrument.type == InstrumentType.soundfont ? "" : "none";
+                this._soundFontSampleSelectRow.style.display = "none";
+                this._soundFontForceOneshotRow.style.display = instrument.type == InstrumentType.soundfont ? "" : "none";
                 this._soundFontForceOneshotBox.checked = instrument.soundFontForceOneshot;
                 this._useChipWaveAdvancedLoopControlsRow.style.display = "none";
                 this._chipWaveLoopModeSelectRow.style.display = "none";
@@ -3436,7 +3545,9 @@ export class SongEditor {
             this._chipWaveStartOffsetRow.style.display = "none";
             this._chipWavePlayBackwardsRow.style.display = "none";
             this._soundFontInstrumentSelectRow.style.display = "none";
+            this._soundFontSampleSelectRow.style.display = "none";
             this._soundFontForceOneshotRow.style.display = "none";
+            this._soundFontDrumsetGroup.style.display = "none";
             // advloop addition
             this._spectrumRow.style.display = "none";
             this._harmonicsRow.style.display = "none";
@@ -5745,7 +5856,13 @@ export class SongEditor {
     }
 
     private _whenSetSoundFontInstrument = (): void => {
-        this.doc.record(new ChangeSoundFontInstrument(this.doc, parseInt(this._soundFontInstrumentSelect.value) | 0));
+        const selection = decodeSoundFontSelection(this._soundFontInstrumentSelect.value);
+        this.doc.record(new ChangeSoundFontInstrument(this.doc, selection.url, selection.index));
+    }
+
+    private _whenSetSoundFontSample = (): void => {
+        const selection = decodeSoundFontSelection(this._soundFontSampleSelect.value);
+        this.doc.record(new ChangeSoundFontSample(this.doc, selection.url, selection.index));
     }
 
     private _whenSetSoundFontForceOneshot = (): void => {

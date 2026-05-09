@@ -32,7 +32,7 @@ var EditorConfig = (function (exports) {
         });
     };
     var _a;
-    const TypePresets = ["chip", "FM", "noise", "spectrum", "drumset", "harmonics", "pulse width", "picked string", "supersaw", "chip (custom)", "mod", "FM (6-op)", "soundfont"];
+    const TypePresets = ["chip", "FM", "noise", "spectrum", "drumset", "harmonics", "pulse width", "picked string", "supersaw", "chip (custom)", "mod", "FM (6-op)", "soundfont", "soundfont drumset"];
     class SampleLoadEvents extends EventTarget {
         constructor() {
             super();
@@ -235,8 +235,8 @@ var EditorConfig = (function (exports) {
         { name: "÷12", stepsPerBeat: 12, roundUpThresholds: null },
         { name: "freehand (÷24)", stepsPerBeat: 24, roundUpThresholds: null },
     ]);
-    Config.instrumentTypeNames = ["chip", "FM", "noise", "spectrum", "drumset", "harmonics", "PWM", "Picked String", "supersaw", "custom chip", "mod", "FM6op", "soundfont"];
-    Config.instrumentTypeHasSpecialInterval = [true, true, false, false, false, true, false, false, false, false, false, true, false];
+    Config.instrumentTypeNames = ["chip", "FM", "noise", "spectrum", "drumset", "harmonics", "PWM", "Picked String", "supersaw", "custom chip", "mod", "FM6op", "soundfont", "soundfont drumset"];
+    Config.instrumentTypeHasSpecialInterval = [true, true, false, false, false, true, false, false, false, false, false, true, false, false];
     Config.chipBaseExpression = 0.03375;
     Config.fmBaseExpression = 0.03;
     Config.noiseBaseExpression = 0.19;
@@ -1366,6 +1366,7 @@ var EditorConfig = (function (exports) {
                 { name: TypePresets[9], customType: 9 },
                 { name: TypePresets[11], customType: 11 },
                 { name: TypePresets[12], customType: 12 },
+                { name: TypePresets[13], customType: 13 },
             ])
         },
         {

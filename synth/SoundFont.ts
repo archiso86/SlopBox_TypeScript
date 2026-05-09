@@ -116,6 +116,10 @@ export function getSoundFont(url: string): SoundFontBank | undefined {
     return loadedSoundFontsByUrl.get(url);
 }
 
+export function getLoadedSoundFonts(): SoundFontBank[] {
+    return Array.from(loadedSoundFontsByUrl.values());
+}
+
 export async function loadSoundFont(url: string, options: SoundFontLoadOptions): Promise<SoundFontBank> {
     const existing: SoundFontBank | undefined = loadedSoundFontsByUrl.get(url);
     if (existing != null) return existing;

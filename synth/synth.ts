@@ -1692,7 +1692,12 @@ export class Instrument {
     public customChipWaveIntegral: Float32Array = new Float32Array(65); // One extra element for wrap-around in chipSynth.
     public soundFontUrl: string = "";
     public soundFontInstrumentIndex: number = 0;
+    public soundFontSampleIndex: number = 0;
     public soundFontForceOneshot: boolean = false;
+    public readonly soundFontDrumsetInstrumentUrls: string[] = [];
+    public readonly soundFontDrumsetInstrumentIndices: number[] = [];
+    public readonly soundFontDrumsetSampleUrls: string[] = [];
+    public readonly soundFontDrumsetSampleIndices: number[] = [];
     public readonly operators: Operator[] = [];
     public readonly spectrumWave: SpectrumWave;
     public readonly harmonicsWave: HarmonicsWave = new HarmonicsWave();
@@ -1744,6 +1749,10 @@ export class Instrument {
         for (let i: number = 0; i < Config.drumCount; i++) {
             this.drumsetEnvelopes[i] = Config.envelopes.dictionary["twang 2"].index;
             this.drumsetSpectrumWaves[i] = new SpectrumWave(true);
+            this.soundFontDrumsetInstrumentUrls[i] = "";
+            this.soundFontDrumsetInstrumentIndices[i] = 0;
+            this.soundFontDrumsetSampleUrls[i] = "";
+            this.soundFontDrumsetSampleIndices[i] = 0;
         }
 
         for (let i = 0; i < 64; i++) {
@@ -1878,10 +1887,18 @@ export class Instrument {
                 this.customChipWaveIntegral[64] = 0.0;
                 break;
             case InstrumentType.soundfont:
+            case InstrumentType.soundfontDrumset:
                 this.chord = Config.chords.dictionary["simultaneous"].index;
                 this.soundFontUrl = "";
                 this.soundFontInstrumentIndex = 0;
-                this.soundFontForceOneshot = false;
+                this.soundFontSampleIndex = 0;
+                this.soundFontForceOneshot = type == InstrumentType.soundfontDrumset;
+                for (let i: number = 0; i < Config.drumCount; i++) {
+                    this.soundFontDrumsetInstrumentUrls[i] = "";
+                    this.soundFontDrumsetInstrumentIndices[i] = 0;
+                    this.soundFontDrumsetSampleUrls[i] = "";
+                    this.soundFontDrumsetSampleIndices[i] = 0;
+                }
                 this.isUsingAdvancedLoopControls = false;
                 this.chipWaveLoopStart = 0;
                 this.chipWaveLoopEnd = 0;
@@ -2194,7 +2211,7 @@ export class Instrument {
         }
 
 
-        if (this.type != InstrumentType.drumset) {
+        if (this.type != InstrumentType.drumset && this.type != InstrumentType.soundfontDrumset) {
             instrumentObject["fadeInSeconds"] = Math.round(10000 * Synth.fadeInSettingToSeconds(this.fadeIn)) / 10000;
             instrumentObject["fadeOutTicks"] = Synth.fadeOutSettingToTicks(this.fadeOut);
         }
@@ -2281,6 +2298,19 @@ export class Instrument {
                 instrumentObject["unisonOffset"] = this.unisonOffset;
                 instrumentObject["unisonExpression"] = this.unisonExpression;
                 instrumentObject["unisonSign"] = this.unisonSign;
+            }
+        } else if (this.type == InstrumentType.soundfontDrumset) {
+            instrumentObject["soundFontUrl"] = this.soundFontUrl;
+            instrumentObject["soundFontInstrumentIndex"] = this.soundFontInstrumentIndex;
+            instrumentObject["soundFontSampleIndex"] = this.soundFontSampleIndex;
+            instrumentObject["drums"] = [];
+            for (let j: number = 0; j < Config.drumCount; j++) {
+                instrumentObject["drums"][j] = {
+                    "soundFontInstrumentUrl": this.soundFontDrumsetInstrumentUrls[j],
+                    "soundFontInstrumentIndex": this.soundFontDrumsetInstrumentIndices[j],
+                    "soundFontSampleUrl": this.soundFontDrumsetSampleUrls[j],
+                    "soundFontSampleIndex": this.soundFontDrumsetSampleIndices[j],
+                };
             }
         } else if (this.type == InstrumentType.pwm) {
             instrumentObject["pulseWidth"] = this.pulseWidth;
@@ -2826,10 +2856,21 @@ export class Instrument {
             if (this.chipWave == -1) this.chipWave = 1;
         }
 
-        if (this.type == InstrumentType.soundfont) {
+        if (this.type == InstrumentType.soundfont || this.type == InstrumentType.soundfontDrumset) {
             this.soundFontUrl = instrumentObject["soundFontUrl"] != undefined ? instrumentObject["soundFontUrl"] : "";
             this.soundFontInstrumentIndex = instrumentObject["soundFontInstrumentIndex"] != undefined ? Math.max(0, instrumentObject["soundFontInstrumentIndex"] | 0) : 0;
-            this.soundFontForceOneshot = instrumentObject["soundFontForceOneshot"] != undefined ? Boolean(instrumentObject["soundFontForceOneshot"]) : false;
+            this.soundFontSampleIndex = instrumentObject["soundFontSampleIndex"] != undefined ? Math.max(0, instrumentObject["soundFontSampleIndex"] | 0) : 0;
+            this.soundFontForceOneshot = this.type == InstrumentType.soundfontDrumset ? true : (instrumentObject["soundFontForceOneshot"] != undefined ? Boolean(instrumentObject["soundFontForceOneshot"]) : false);
+            if (this.type == InstrumentType.soundfontDrumset && instrumentObject["drums"] != undefined) {
+                for (let j: number = 0; j < Config.drumCount; j++) {
+                    const drum: any = instrumentObject["drums"][j];
+                    if (drum == undefined) continue;
+                    this.soundFontDrumsetInstrumentUrls[j] = drum["soundFontInstrumentUrl"] != undefined ? String(drum["soundFontInstrumentUrl"]) : this.soundFontUrl;
+                    this.soundFontDrumsetInstrumentIndices[j] = drum["soundFontInstrumentIndex"] != undefined ? Math.max(0, drum["soundFontInstrumentIndex"] | 0) : 0;
+                    this.soundFontDrumsetSampleUrls[j] = drum["soundFontSampleUrl"] != undefined ? String(drum["soundFontSampleUrl"]) : this.soundFontUrl;
+                    this.soundFontDrumsetSampleIndices[j] = drum["soundFontSampleIndex"] != undefined ? Math.max(0, drum["soundFontSampleIndex"] | 0) : 0;
+                }
+            }
             this.isUsingAdvancedLoopControls = false;
             this.chipWaveLoopMode = 2;
         }
@@ -3279,11 +3320,11 @@ export class Instrument {
     }
 
     public getFadeInSeconds(): number {
-        return (this.type == InstrumentType.drumset) ? 0.0 : Synth.fadeInSettingToSeconds(this.fadeIn);
+        return (this.type == InstrumentType.drumset || this.type == InstrumentType.soundfontDrumset) ? 0.0 : Synth.fadeInSettingToSeconds(this.fadeIn);
     }
 
     public getFadeOutTicks(): number {
-        return (this.type == InstrumentType.drumset) ? Config.drumsetFadeOutTicks : Synth.fadeOutSettingToTicks(this.fadeOut)
+        return (this.type == InstrumentType.drumset || this.type == InstrumentType.soundfontDrumset) ? Config.drumsetFadeOutTicks : Synth.fadeOutSettingToTicks(this.fadeOut)
     }
 
     public getChord(): Chord {
@@ -3926,7 +3967,7 @@ export class Song {
                     buffer.push(base64IntToCharCode[instrument.lowerNoteLimit >> 6], base64IntToCharCode[instrument.lowerNoteLimit & 0x3f]);
                 }
 
-                if (instrument.type != InstrumentType.drumset) {
+                if (instrument.type != InstrumentType.drumset && instrument.type != InstrumentType.soundfontDrumset) {
                     buffer.push(SongTagCode.fadeInOut, base64IntToCharCode[instrument.fadeIn], base64IntToCharCode[instrument.fadeOut]);
                     // Transition info follows transition song tag
                     buffer.push(base64IntToCharCode[+instrument.clicklessTransition]);
@@ -4106,7 +4147,7 @@ export class Song {
                     buffer.push(SongTagCode.unison, base64IntToCharCode[instrument.unison]);
                     if (instrument.unison == Config.unisons.length) encodeUnisonSettings(buffer, instrument.unisonVoices, instrument.unisonSpread, instrument.unisonOffset, instrument.unisonExpression, instrument.unisonSign);
                     buffer.push(SongTagCode.stringSustain, base64IntToCharCode[instrument.stringSustain | (instrument.stringSustainType << 5)]);
-                } else if (instrument.type == InstrumentType.soundfont) {
+                } else if (instrument.type == InstrumentType.soundfont || instrument.type == InstrumentType.soundfontDrumset) {
                     const encodedSoundFontUrl: string = encodeURIComponent(instrument.soundFontUrl);
                     buffer.push(SongTagCode.soundFont);
                     encode32BitNumber(buffer, encodedSoundFontUrl.length);
@@ -4114,11 +4155,29 @@ export class Song {
                         buffer.push(encodedSoundFontUrl.charCodeAt(j));
                     }
                     encode32BitNumber(buffer, instrument.soundFontInstrumentIndex);
-                    encode32BitNumber(buffer, 0);
-                    buffer.push(base64IntToCharCode[7 | (instrument.soundFontForceOneshot ? 8 : 0)]);
+                    encode32BitNumber(buffer, instrument.soundFontSampleIndex);
+                    buffer.push(base64IntToCharCode[7 | ((instrument.soundFontForceOneshot || instrument.type == InstrumentType.soundfontDrumset) ? 8 : 0)]);
                     buffer.push(base64IntToCharCode[2]);
-                    buffer.push(SongTagCode.unison, base64IntToCharCode[instrument.unison]);
-                    if (instrument.unison == Config.unisons.length) encodeUnisonSettings(buffer, instrument.unisonVoices, instrument.unisonSpread, instrument.unisonOffset, instrument.unisonExpression, instrument.unisonSign);
+                    if (instrument.type == InstrumentType.soundfont) {
+                        buffer.push(SongTagCode.unison, base64IntToCharCode[instrument.unison]);
+                        if (instrument.unison == Config.unisons.length) encodeUnisonSettings(buffer, instrument.unisonVoices, instrument.unisonSpread, instrument.unisonOffset, instrument.unisonExpression, instrument.unisonSign);
+                    } else {
+                        buffer.push(SongTagCode.drumsetEnvelopes);
+                        for (let j: number = 0; j < Config.drumCount; j++) {
+                            const encodedSoundFontDrumUrl: string = encodeURIComponent(instrument.soundFontDrumsetInstrumentUrls[j]);
+                            encode32BitNumber(buffer, encodedSoundFontDrumUrl.length);
+                            for (let k: number = 0; k < encodedSoundFontDrumUrl.length; k++) {
+                                buffer.push(encodedSoundFontDrumUrl.charCodeAt(k));
+                            }
+                            encode32BitNumber(buffer, instrument.soundFontDrumsetInstrumentIndices[j]);
+                            const encodedSoundFontDrumSampleUrl: string = encodeURIComponent(instrument.soundFontDrumsetSampleUrls[j]);
+                            encode32BitNumber(buffer, encodedSoundFontDrumSampleUrl.length);
+                            for (let k: number = 0; k < encodedSoundFontDrumSampleUrl.length; k++) {
+                                buffer.push(encodedSoundFontDrumSampleUrl.charCodeAt(k));
+                            }
+                            encode32BitNumber(buffer, instrument.soundFontDrumsetSampleIndices[j]);
+                        }
+                    }
                 } else if (instrument.type == InstrumentType.mod) {
                     // Handled down below. Could be moved, but meh.
                 } else {
@@ -5176,11 +5235,28 @@ export class Song {
                     }
                 } else {
                     // This tag is now only used for drumset filter envelopes.
-                    for (let i: number = 0; i < Config.drumCount; i++) {
-                        let aa: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
-                        if ((beforeTwo && fromGoldBox) || (!fromGoldBox && !fromUltraBox && !fromSlarmoosBox && !fromJukeBox)) aa = pregoldToEnvelope[aa];
-                        if (!fromSlarmoosBox && !fromJukeBox && aa >= 2) aa++; //2 for pitch
-                        instrument.drumsetEnvelopes[i] = clamp(0, Config.envelopes.length, aa);
+                    if (instrument.type == InstrumentType.soundfontDrumset) {
+                        for (let i: number = 0; i < Config.drumCount; i++) {
+                            const encodedSoundFontDrumUrlLength: number = decode32BitNumber(compressed, charIndex);
+                            charIndex += 6;
+                            instrument.soundFontDrumsetInstrumentUrls[i] = decodeURIComponent(compressed.substring(charIndex, charIndex + encodedSoundFontDrumUrlLength));
+                            charIndex += encodedSoundFontDrumUrlLength;
+                            instrument.soundFontDrumsetInstrumentIndices[i] = Math.max(0, decode32BitNumber(compressed, charIndex) | 0);
+                            charIndex += 6;
+                            const encodedSoundFontDrumSampleUrlLength: number = decode32BitNumber(compressed, charIndex);
+                            charIndex += 6;
+                            instrument.soundFontDrumsetSampleUrls[i] = decodeURIComponent(compressed.substring(charIndex, charIndex + encodedSoundFontDrumSampleUrlLength));
+                            charIndex += encodedSoundFontDrumSampleUrlLength;
+                            instrument.soundFontDrumsetSampleIndices[i] = Math.max(0, decode32BitNumber(compressed, charIndex) | 0);
+                            charIndex += 6;
+                        }
+                    } else {
+                        for (let i: number = 0; i < Config.drumCount; i++) {
+                            let aa: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                            if ((beforeTwo && fromGoldBox) || (!fromGoldBox && !fromUltraBox && !fromSlarmoosBox && !fromJukeBox)) aa = pregoldToEnvelope[aa];
+                            if (!fromSlarmoosBox && !fromJukeBox && aa >= 2) aa++; //2 for pitch
+                            instrument.drumsetEnvelopes[i] = clamp(0, Config.envelopes.length, aa);
+                        }
                     }
                 }
             } break;
@@ -5221,11 +5297,11 @@ export class Song {
                 charIndex += encodedSoundFontUrlLength;
                 instrument.soundFontInstrumentIndex = Math.max(0, decode32BitNumber(compressed, charIndex) | 0);
                 charIndex += 6;
-                decode32BitNumber(compressed, charIndex);
+                instrument.soundFontSampleIndex = Math.max(0, decode32BitNumber(compressed, charIndex) | 0);
                 charIndex += 6;
                 const soundFontFlags: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
                 charIndex++;
-                instrument.soundFontForceOneshot = Boolean(soundFontFlags & 8);
+                instrument.soundFontForceOneshot = instrument.type == InstrumentType.soundfontDrumset ? true : Boolean(soundFontFlags & 8);
                 instrument.isUsingAdvancedLoopControls = false;
                 instrument.chipWaveLoopMode = 2;
             } break;
@@ -9843,7 +9919,7 @@ class InstrumentState {
             this.unisonOffset = instrument.unisonOffset;
             this.unisonExpression = instrument.unisonExpression;
             this.unisonSign = instrument.unisonSign;
-        } else if (instrument.type == InstrumentType.soundfont) {
+        } else if (instrument.type == InstrumentType.soundfont || instrument.type == InstrumentType.soundfontDrumset) {
             this.wave = Config.chipWaves[0].samples;
             this.isUsingAdvancedLoopControls = false;
             this.chipWaveLoopStart = 0;
@@ -12328,6 +12404,19 @@ export class Synth {
     }
 
     private static selectSoundFontZone(instrument: Instrument, tone: Tone): { zone: SoundFontZone | null, sample: SoundFontSample | null, rootKey: number } {
+        if (instrument.type == InstrumentType.soundfontDrumset) {
+            const pitch: number = tone.drumsetPitch == null ? 0 : tone.drumsetPitch;
+            const instrumentUrl: string = instrument.soundFontDrumsetInstrumentUrls[pitch] || instrument.soundFontUrl;
+            const sampleUrl: string = instrument.soundFontDrumsetSampleUrls[pitch] || instrumentUrl;
+            const sampleBank: SoundFontBank | undefined = getSoundFont(sampleUrl);
+            const sampleIndex: number = instrument.soundFontDrumsetSampleIndices[pitch] == undefined ? instrument.soundFontSampleIndex : instrument.soundFontDrumsetSampleIndices[pitch];
+            const sample: SoundFontSample | undefined = sampleBank == null ? undefined : sampleBank.samples[sampleIndex];
+            return {
+                zone: null,
+                sample: sample == null ? null : sample,
+                rootKey: 60,
+            };
+        }
         const bank: SoundFontBank | undefined = getSoundFont(instrument.soundFontUrl);
         const sfInstrument: SoundFontInstrument | undefined = bank == null ? undefined : bank.instruments[instrument.soundFontInstrumentIndex];
         const midiPitch: number = Math.max(0, Math.min(127, Math.round(tone.pitches[0] + 12)));
@@ -12477,6 +12566,8 @@ export class Synth {
                 basePitch += -96.37 + Math.log2(soundFontSample.integratedSamples.length / soundFontSample.sampleRate) * -12 - (-60 + soundFontSelection.rootKey);
                 soundFontTune = soundFontZone.coarseTune + (soundFontZone.fineTune + soundFontSample.pitchCorrection) / 100;
             }
+        } else if (instrument.type == InstrumentType.soundfontDrumset) {
+            baseExpression = Config.drumsetBaseExpression;
         } else if (instrument.type == InstrumentType.harmonics) {
             baseExpression = Config.harmonicsBaseExpression;
         } else if (instrument.type == InstrumentType.pwm) {
@@ -12516,10 +12607,32 @@ export class Synth {
             }
             // advloop addition
         }
-        if (instrument.type == InstrumentType.soundfont) {
+        if (instrument.type == InstrumentType.soundfontDrumset) {
+            if (tone.drumsetPitch == null) {
+                tone.drumsetPitch = tone.pitches[0];
+                if (tone.note != null) tone.drumsetPitch += tone.note.pickMainInterval();
+                tone.drumsetPitch = Math.max(0, Math.min(Config.drumCount - 1, tone.drumsetPitch));
+            }
+            const soundFontSelection = Synth.selectSoundFontZone(instrument, tone);
+            soundFontSample = soundFontSelection.sample;
+            if (soundFontSample != null) {
+                basePitch = -36.37 + Math.log2(soundFontSample.integratedSamples.length / soundFontSample.sampleRate) * -12;
+            }
+        }
+        if (instrument.type == InstrumentType.soundfont || instrument.type == InstrumentType.soundfontDrumset) {
             if (soundFontZone == null || soundFontSample == null) {
-                tone.soundFontSilent = true;
-                instrumentState.awake = false;
+                if (instrument.type == InstrumentType.soundfontDrumset && soundFontSample != null) {
+                    tone.soundFontSilent = false;
+                    tone.soundFontWave = soundFontSample.integratedSamples;
+                    tone.soundFontRawWave = soundFontSample.rawSamples;
+                    tone.soundFontLoopStart = soundFontSample.loopStart;
+                    tone.soundFontLoopEnd = soundFontSample.loopEnd;
+                    tone.soundFontLoopMode = 2;
+                    tone.soundFontSampleRate = soundFontSample.sampleRate;
+                } else {
+                    tone.soundFontSilent = true;
+                    instrumentState.awake = false;
+                }
             } else {
                 tone.soundFontSilent = false;
                 tone.soundFontWave = soundFontSample.integratedSamples;
@@ -13074,6 +13187,12 @@ export class Synth {
                     pitch = tone.pitches[instrument.monoChordTone];
                 }
             }
+            if (instrument.type == InstrumentType.soundfontDrumset) {
+                pitch = 0;
+                intervalStart = 0;
+                intervalEnd = 0;
+                soundFontTune = 0;
+            }
 
             const startPitch: number = basePitch + (pitch + intervalStart + soundFontTune) * intervalScale;
             const endPitch: number = basePitch + (pitch + intervalEnd + soundFontTune) * intervalScale;
@@ -13139,7 +13258,7 @@ export class Synth {
             }
 
             const startFreq: number = Instrument.frequencyFromPitch(startPitch);
-            if (instrument.type == InstrumentType.chip || instrument.type == InstrumentType.customChipWave || instrument.type == InstrumentType.soundfont || instrument.type == InstrumentType.harmonics || instrument.type == InstrumentType.pickedString || instrument.type == InstrumentType.spectrum || instrument.type == InstrumentType.pwm || instrument.type == InstrumentType.noise || instrument.type == InstrumentType.drumset) {
+            if (instrument.type == InstrumentType.chip || instrument.type == InstrumentType.customChipWave || instrument.type == InstrumentType.soundfont || instrument.type == InstrumentType.soundfontDrumset || instrument.type == InstrumentType.harmonics || instrument.type == InstrumentType.pickedString || instrument.type == InstrumentType.spectrum || instrument.type == InstrumentType.pwm || instrument.type == InstrumentType.noise || instrument.type == InstrumentType.drumset) {
                 const unisonVoices: number = instrument.unisonVoices;
                 const unisonSpread: number = instrument.unisonSpread;
                 const unisonOffset: number = instrument.unisonOffset;
@@ -13407,7 +13526,7 @@ export class Synth {
                 expressionEnd = 0;
                 instrumentState.awake = false;
             }
-            if (instrument.type == InstrumentType.soundfont && tone.soundFontSilent) {
+            if ((instrument.type == InstrumentType.soundfont || instrument.type == InstrumentType.soundfontDrumset) && tone.soundFontSilent) {
                 expressionStart = 0;
                 expressionEnd = 0;
                 instrumentState.awake = false;
@@ -13521,7 +13640,7 @@ export class Synth {
             return Synth.chipSynth;
         } else if (instrument.type == InstrumentType.customChipWave) {
             return Synth.chipSynth;
-        } else if (instrument.type == InstrumentType.soundfont) {
+        } else if (instrument.type == InstrumentType.soundfont || instrument.type == InstrumentType.soundfontDrumset) {
             return Synth.loopableChipSynth;
         } else if (instrument.type == InstrumentType.harmonics) {
             return Synth.harmonicsSynth;
