@@ -33,6 +33,9 @@ jobs:
           npm run build
           npm run deploy-files
           test -f ./to_deploy/index.html
+          test -f ./to_deploy/offline/jquery-3.4.1.min.js
+          test -f ./to_deploy/offline/select2.min.css
+          test -f ./to_deploy/offline/select2.min.js
           ! grep -q "offline version" ./to_deploy/index.html
           find ./to_deploy -maxdepth 2 -type f | sort | head -100
 
