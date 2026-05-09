@@ -1,4 +1,5 @@
 mkdir to_deploy -p
+mkdir to_deploy/offline -p
 mkdir to_deploy/player -p
 mkdir to_deploy/theme_resources -p
 
@@ -28,6 +29,9 @@ cp website/index.html to_deploy/
 cp website/favicon.ico to_deploy/
 cp website/beepbox_synth.min.js to_deploy/
 cp website/synth_example.html to_deploy/
+cp website/offline/jquery-3.4.1.min.js to_deploy/offline/
+cp website/offline/select2.min.css to_deploy/offline/
+cp website/offline/select2.min.js to_deploy/offline/
 
 cp website/player/* to_deploy/player/ -r
 cp website/theme_resources/* to_deploy/theme_resources/ -r
