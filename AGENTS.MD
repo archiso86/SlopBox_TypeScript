@@ -21,7 +21,8 @@ Use `scripts/npm-distrobox.sh`, NOT `npm`
 ```
 
 ---
-# Memory
+# Debugging
+Debugging should focus on reverting or changing commits by `archiso86`.
 Write `./MEMORY.md` after debugging work.
 - Recommended headers:
   - # Bug name (Described by user)
