@@ -40,8 +40,9 @@
 	<script>
 		"use strict";
 
-		const dependencyRoot = "./offline/";
-		const editorRoot = "./";
+		const inOfflineSource = /(^|\/)offline(\/|$)/.test(location.pathname);
+		const dependencyRoots = inOfflineSource ? ["./"] : ["./offline/", "./"];
+		const editorRoot = inOfflineSource ? "../" : "./";
 
 		function loadCss(href) {
 			const link = document.createElement("link");
@@ -60,10 +61,14 @@
 			});
 		}
 
-		function loadDependencies() {
+		function loadDependencies(rootIndex) {
+			const dependencyRoot = dependencyRoots[rootIndex];
+			if (dependencyRoot == undefined) return Promise.reject();
+
+			loadCss(dependencyRoot + "select2.min.css");
 			return loadScript(dependencyRoot + "jquery-3.4.1.min.js")
 				.then(() => loadScript(dependencyRoot + "select2.min.js"))
-				.then(() => loadCss(dependencyRoot + "select2.min.css"));
+				.catch(() => loadDependencies(rootIndex + 1));
 		}
 
 		function browserHasRequiredFeatures() {
@@ -81,7 +86,7 @@
 		}
 
 		if (browserHasRequiredFeatures()) {
-			loadDependencies()
+			loadDependencies(0)
 				.then(() => loadScript(editorRoot + "beepbox_editor.min.js"))
 				.catch(() => {
 					document.getElementById("beepboxEditorContainer").textContent = "Sorry, slopbox failed to load.";
