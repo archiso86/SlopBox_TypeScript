@@ -48,19 +48,9 @@ export class AddSamplesPrompt {
     private readonly _instructionsLink: HTMLAnchorElement = a({ href: "#" }, "Here's more information and some instructions on how to use custom samples in slopbox.");
     private readonly _description: HTMLDivElement = div(
         div({ style: "margin-bottom: 0.5em; -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text; cursor: text;" },
-            "In order to use the old slopbox samples, you should add ",
-            code("legacySamples"),
-            " as an URL. You can also use ",
-            code("nintariboxSamples"),
-            " and ",
-            code("marioPaintboxSamples"),
-            " for more built-in sample packs."
-        ),
-        div({ style: "margin-bottom: 0.5em;" },
-            "The order of these samples is important - if you change it you'll break your song!"
-        ),
-        div({ style: "margin-bottom: 0.5em;" },
-            this._instructionsLink,
+            "Soundfonts should be suffixed with ",
+            code(".sf2"),
+            " for them to be properly recognized.",
         )
     );
     private readonly _closeInstructionsButton: HTMLButtonElement = button({ style: "height: auto; min-height: var(--button-size); width: 100%;" }, "Close instructions");
