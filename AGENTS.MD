@@ -26,7 +26,7 @@ Use `scripts/npm-distrobox.sh`, NOT `npm`
 - Avoid messing with internals, this is a fork of an existing project
 
 ## Debugging
-- Debugging should focus on reverting or changing commits by `archiso86`.
+- Debugging should focus on reverting or changing the most recent commits by `archiso86`.
 - Do not write "Verification" notes in `MEMORY.md`
 - Debug by running code and simulations, rather than guessing based on hypothetical code flow
 
