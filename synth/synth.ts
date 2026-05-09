@@ -10395,7 +10395,7 @@ export class Synth {
 
     public readonly channels: ChannelState[] = [];
     private readonly tonePool: Deque<Tone> = new Deque<Tone>();
-    private readonly tempMatchedPitchTones: Array<Tone | null> = Array(Config.maxChordSize).fill(null);
+    private readonly tempMatchedPitchTones: Array<Tone | null> = Array(Config.maximumTonesPerChannel).fill(null);
 
     private startedMetronome: boolean = false;
     private metronomeSamplesRemaining: number = -1;
@@ -11801,7 +11801,7 @@ export class Synth {
                 } else {
                     //const transition: Transition = instrument.getTransition();
 
-                    this.moveTonesIntoOrderedTempMatchedList(toneList, filteredPitches);
+                    this.moveTonesIntoOrderedTempMatchedList(toneList, filteredPitches, instrument, null, false);
 
                     for (let i: number = 0; i < filteredPitches.length; i++) {
                         //const strumOffsetParts: number = i * instrument.getChord().strumParts;
@@ -11865,7 +11865,7 @@ export class Synth {
                 } else {
                     //const transition: Transition = instrument.getTransition();
 
-                    this.moveTonesIntoOrderedTempMatchedList(toneList, filteredBassPitches);
+                    this.moveTonesIntoOrderedTempMatchedList(toneList, filteredBassPitches, instrument, null, false);
 
                     for (let i: number = 0; i < filteredBassPitches.length; i++) {
                         //const strumOffsetParts: number = i * instrument.getChord().strumParts;
@@ -11951,7 +11951,7 @@ export class Synth {
         return true;
     }
 
-    private moveTonesIntoOrderedTempMatchedList(toneList: Deque<Tone>, notePitches: number[]): void {
+    private moveTonesIntoOrderedTempMatchedList(toneList: Deque<Tone>, notePitches: number[], instrument: Instrument, note: Note | null, matchSoundFontLayers: boolean): void {
         // The tones are about to seamlessly transition to a new note. The pitches
         // from the old note may or may not match any of the pitches in the new
         // note, and not necessarily in order, but if any do match, they'll sound
@@ -11961,13 +11961,19 @@ export class Synth {
         for (let i: number = 0; i < toneList.count(); i++) {
             const tone: Tone = toneList.get(i);
             const pitch: number = tone.pitches[0] + tone.lastInterval;
+            let targetToneIndex: number = 0;
             for (let j: number = 0; j < notePitches.length; j++) {
+                const soundFontLayerCount: number = matchSoundFontLayers && instrument.type == InstrumentType.soundfont ? Synth.countMatchingSoundFontZones(instrument, notePitches[j], note) : 1;
                 if (notePitches[j] == pitch) {
-                    this.tempMatchedPitchTones[j] = tone;
-                    toneList.remove(i);
-                    i--;
+                    const targetIndex: number = targetToneIndex + tone.soundFontLayer;
+                    if (tone.soundFontLayer < soundFontLayerCount && targetIndex < this.tempMatchedPitchTones.length && this.tempMatchedPitchTones[targetIndex] == null) {
+                        this.tempMatchedPitchTones[targetIndex] = tone;
+                        toneList.remove(i);
+                        i--;
+                    }
                     break;
                 }
+                targetToneIndex += soundFontLayerCount;
             }
         }
 
@@ -12240,7 +12246,7 @@ export class Synth {
                         const transition: Transition = instrument.getTransition();
 
                         if (((transition.isSeamless && !transition.slides && chord.strumParts == 0) || forceContinueAtStart) && (Config.ticksPerPart * note.start == currentTick) && prevNoteForThisInstrument != null) {
-                            this.moveTonesIntoOrderedTempMatchedList(toneList, filteredPitches);
+                            this.moveTonesIntoOrderedTempMatchedList(toneList, filteredPitches, instrument, note, true);
                         }
 
                         let strumOffsetParts: number = 0;
