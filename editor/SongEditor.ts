@@ -1509,7 +1509,7 @@ export class SongEditor {
         SVG.path({ d: "M150 65 c0 -8 -7 -15 -15 -15 -8 0 -15 -4 -15 -10 0 -14 23 -13 38 2 15 15 16 38 2 38 -5 0 -10 -7 -10 -15z" })]);
 
     private readonly _promptContainer: HTMLDivElement = div({ class: "promptContainer", style: "display: none;" });
-    private readonly _promptContainerBG: HTMLDivElement = div({ class: "promptContainerBG", style: "display: none; height: 100%; width: 100%; position: fixed; z-index: 99; overflow-x: hidden; pointer-events: none;" });
+    private readonly _promptContainerBG: HTMLDivElement = div({ class: "promptContainerBG", style: "display: none; top: 0; left: 0; height: 100%; width: 100%; position: fixed; z-index: 99; overflow-x: hidden; pointer-events: none;" });
     private readonly _zoomInButton: HTMLButtonElement = button({ class: "zoomInButton", type: "button", title: "Zoom In" });
     private readonly _zoomOutButton: HTMLButtonElement = button({ class: "zoomOutButton", type: "button", title: "Zoom Out" });
     private readonly _patternEditorRow: HTMLDivElement = div({ style: "flex: 1; height: 100%; display: flex; overflow: hidden; justify-content: center;" },
@@ -2539,13 +2539,13 @@ export class SongEditor {
                 if (this.doc.prefs.frostedGlassBackground == true) {
                     this._promptContainerBG.style.display = "";
                     this._promptContainerBG.style.backgroundColor = "rgba(0,0,0, 0)";
-                    this._promptContainerBG.style.backdropFilter = "brightness(0.9) blur(14px)";
+                    this._promptContainerBG.style.backdropFilter = "brightness(0.65) blur(14px)";
                     this._promptContainerBG.style.opacity = "1";
                 } else {
                     this._promptContainerBG.style.display = "";
-                    this._promptContainerBG.style.backgroundColor = "var(--editor-background)";
+                    this._promptContainerBG.style.backgroundColor = "rgba(0,0,0, 0.65)";
                     this._promptContainerBG.style.backdropFilter = "";
-                    this._promptContainerBG.style.opacity = "0.5";
+                    this._promptContainerBG.style.opacity = "1";
                 }
                 this._promptContainer.appendChild(this.prompt.container);
                 document.body.appendChild(this._promptContainerBG);
