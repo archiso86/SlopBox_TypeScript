@@ -191,7 +191,11 @@ function createPresetInstruments(phdr: PresetHeader[], pbag: Bag[], pgen: Genera
             const header: InstrumentHeader | undefined = inst[instrumentIndex];
             const nextHeader: InstrumentHeader | undefined = inst[instrumentIndex + 1];
             if (header == null || nextHeader == null) continue;
-            zones.push(...createZones(header, nextHeader, ibag, igen, shdr, presetGlobal));
+            const localPresetGenerators: Map<number, Generator> = new Map(presetGlobal);
+            for (const generator of zoneGenerators) {
+                if (generator.oper != GeneratorType.instrument) localPresetGenerators.set(generator.oper, generator);
+            }
+            zones.push(...createZones(header, nextHeader, ibag, igen, shdr, localPresetGenerators));
         }
         if (zones.length > 0) instruments.push({ name: cleanName(preset.name), zones: zones });
     }
@@ -235,7 +239,7 @@ function createZones(header: InstrumentHeader, nextHeader: InstrumentHeader, iba
             loopMode: soundFontSampleModeToChipLoopMode(generatorAmount(get(GeneratorType.sampleModes), 0)),
             attackSeconds: timecentsToSeconds(generatorAmount(get(GeneratorType.attackVolEnv), -12000)),
             releaseSeconds: timecentsToSeconds(generatorAmount(get(GeneratorType.releaseVolEnv), -12000)),
-            filterCutoffHz: centsToHz(generatorAmount(get(GeneratorType.initialFilterFc), 13500)),
+            filterCutoffHz: centsToHz(soundFontInitialFilterFcCents(get(GeneratorType.initialFilterFc))),
             vibratoCents: generatorAmount(get(GeneratorType.modLfoToPitch), 0),
         });
     }
@@ -571,6 +575,12 @@ function clamp(min, max, value) {
 
 function generatorAmount(generator: Generator | undefined, defaultValue: number): number {
     return generator == null ? defaultValue : generator.amount;
+}
+
+function soundFontInitialFilterFcCents(generator: Generator | undefined): number {
+    const defaultCents: number = 13500;
+    if (generator == null) return defaultCents;
+    return clamp(1500, defaultCents, generator.amount < 0 ? defaultCents + generator.amount : generator.amount);
 }
 
 function timecentsToSeconds(timecents: number): number {
