@@ -8,7 +8,7 @@ Allows saving made songs to a `.json` file
 - `./editor`: Editor + song playback UI
 - `./player`: Music player UI
 - `./website`: Website HTML/JS
-  (Includes generated `*.min.js` files)
+  (Includes generated `*.min.js` files, exclude from file searches)
 
 ## Local Electron data
 `npm-distrobox.sh run start` runs Electron using stored data and cache from `/var/home/goobadmin/.config/JukeBox`.
