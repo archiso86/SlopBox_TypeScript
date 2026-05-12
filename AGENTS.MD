@@ -18,7 +18,6 @@ Use `scripts/npm-distrobox.sh`, NOT `npm`
 `distrobox.ini` defines Distrobox container configuration
 
 ```sh
-./scripts/npm-distrobox.sh install
 ./scripts/npm-distrobox.sh run build
 ./scripts/npm-distrobox.sh run build-offline
 ```
