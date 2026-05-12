@@ -10,6 +10,9 @@ Allows saving made songs to a `.json` file
 - `./website`: Website HTML/JS
   (Includes generated `*.min.js` files)
 
+## Local Electron data
+`npm-distrobox.sh run start` runs Electron using stored data and cache from `/var/home/goobadmin/.config/JukeBox`.
+
 # Build environment
 Use `scripts/npm-distrobox.sh`, NOT `npm`
 `distrobox.ini` defines Distrobox container configuration
@@ -22,7 +25,7 @@ Use `scripts/npm-distrobox.sh`, NOT `npm`
 
 ---
 # Rules
-- `build` and `build-offline` at the end of your turn to apply changes
+- `build` and `build-offline` at the end of your turn to apply changes, only if you wrote code
 - Avoid messing with internals, this is a fork of an existing project
 
 ## Debugging

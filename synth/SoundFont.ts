@@ -1,5 +1,3 @@
-import { performIntegral } from "./SynthConfig";
-
 export interface SoundFontLoadOptions {}
 
 export interface SoundFontSample {
@@ -81,6 +79,17 @@ interface SampleHeader {
     readonly pitchCorrection: number;
 }
 
+interface SoundFontWorkerSample {
+    readonly name: string;
+    readonly sampleRate: number;
+    readonly originalPitch: number;
+    readonly pitchCorrection: number;
+    readonly rawSamples: Float32Array;
+    readonly integratedSamples: Float32Array;
+    readonly loopStart: number;
+    readonly loopEnd: number;
+}
+
 const enum GeneratorType {
     startAddrsOffset = 0,
     endAddrsOffset = 1,
@@ -111,6 +120,7 @@ const enum GeneratorType {
 
 const loadedSoundFontsByUrl: Map<string, SoundFontBank> = new Map();
 const loadingSoundFontsByUrl: Map<string, Promise<SoundFontBank>> = new Map();
+const soundFontParseYieldInterval: number = 1 << 15;
 
 export function getSoundFont(url: string): SoundFontBank | undefined {
     return loadedSoundFontsByUrl.get(url);
@@ -129,7 +139,7 @@ export async function loadSoundFont(url: string, options: SoundFontLoadOptions):
         const response: Response = await fetch(url);
         if (!response.ok) throw new Error("Couldn't load soundfont");
         const arrayBuffer: ArrayBuffer = await response.arrayBuffer();
-        const bank: SoundFontBank = parseSoundFont(url, new Uint8Array(arrayBuffer), options);
+        const bank: SoundFontBank = await parseSoundFont(url, new Uint8Array(arrayBuffer), options);
         loadedSoundFontsByUrl.set(url, bank);
         return bank;
     })();
@@ -138,7 +148,7 @@ export async function loadSoundFont(url: string, options: SoundFontLoadOptions):
     return promise;
 }
 
-function parseSoundFont(url: string, data: Uint8Array, options: SoundFontLoadOptions): SoundFontBank {
+async function parseSoundFont(url: string, data: Uint8Array, options: SoundFontLoadOptions): Promise<SoundFontBank> {
     const view: DataView = new DataView(data.buffer, data.byteOffset, data.byteLength);
     validateSoundFontHeader(view, data.length);
     const smpl: Chunk = requireListChunk(view, 0, data.length, "sdta", "smpl");
@@ -150,7 +160,6 @@ function parseSoundFont(url: string, data: Uint8Array, options: SoundFontLoadOpt
     const igen: Generator[] = parseGenerators(requireListChunk(view, 0, data.length, "pdta", "igen"), view);
     const shdr: SampleHeader[] = normalizeSampleHeaders(parseShdr(requireListChunk(view, 0, data.length, "pdta", "shdr"), view, data), smpl);
     validateSoundFontTables(phdr, pbag, pgen, inst, ibag, igen, shdr);
-    const samples: SoundFontSample[] = shdr.slice(0, -1).map(header => makeSample(header, smpl, view));
     let instruments: SoundFontInstrument[] = createPresetInstruments(phdr, pbag, pgen, inst, ibag, igen, shdr);
     if (instruments.length == 0) {
         instruments = [];
@@ -160,6 +169,7 @@ function parseSoundFont(url: string, data: Uint8Array, options: SoundFontLoadOpt
         }
     }
     if (instruments.length == 0) throw new Error("SoundFont contains no usable instruments");
+    const samples: SoundFontSample[] = await makeSamples(data, smpl, shdr);
     return { url: url, instruments: instruments, samples: samples, options: options };
 }
 
@@ -240,25 +250,69 @@ function getZoneGenerators(bagIndex: number, bags: Bag[], generators: Generator[
     return generators.slice(start, Math.min(end, generators.length));
 }
 
-function makeSample(header: SampleHeader, smpl: Chunk, view: DataView): SoundFontSample {
+async function makeSamples(data: Uint8Array, smpl: Chunk, shdr: SampleHeader[]): Promise<SoundFontSample[]> {
+    if (typeof Worker != "undefined" && typeof Blob != "undefined" && typeof URL != "undefined") {
+        return await makeSamplesInWorker(data, smpl, shdr);
+    }
+    const view: DataView = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    const samples: SoundFontSample[] = [];
+    for (let i: number = 0; i < shdr.length - 1; i++) {
+        samples.push(await makeSample(shdr[i], smpl, view));
+    }
+    return samples;
+}
+
+function makeSamplesInWorker(data: Uint8Array, smpl: Chunk, shdr: SampleHeader[]): Promise<SoundFontSample[]> {
+    return new Promise((resolve, reject) => {
+        const blob: Blob = new Blob([soundFontWorkerScript], { type: "application/javascript" });
+        const workerUrl: string = URL.createObjectURL(blob);
+        const worker: Worker = new Worker(workerUrl);
+        const cleanup = (): void => {
+            worker.terminate();
+            URL.revokeObjectURL(workerUrl);
+        };
+        worker.onmessage = (event: MessageEvent): void => {
+            cleanup();
+            const message: { error?: string, samples?: SoundFontWorkerSample[] } = event.data;
+            if (message.error != null) {
+                reject(new Error(message.error));
+            } else {
+                resolve(message.samples || []);
+            }
+        };
+        worker.onerror = (event: ErrorEvent): void => {
+            cleanup();
+            reject(event.error || new Error(event.message));
+        };
+        const headers: SampleHeader[] = shdr.slice(0, -1);
+        worker.postMessage({
+            buffer: data.buffer,
+            byteOffset: data.byteOffset,
+            byteLength: data.byteLength,
+            smpl: smpl,
+            headers: headers,
+        }, [data.buffer]);
+    });
+}
+
+async function makeSample(header: SampleHeader, smpl: Chunk, view: DataView): Promise<SoundFontSample> {
     const sampleCount: number = Math.floor(smpl.size / 2);
     const sampleStart: number = clamp(0, Math.max(0, sampleCount - 1), header.start);
     const sampleEnd: number = clamp(sampleStart + 1, sampleCount, header.end);
     const length: number = Math.max(1, sampleEnd - sampleStart);
-    const raw: number[] = [];
+    const rawSamples: Float32Array = new Float32Array(length + 1);
     for (let i: number = 0; i < length; i++) {
-        raw.push(view.getInt16(smpl.start + (sampleStart + i) * 2, true) / 32768.0);
+        rawSamples[i] = view.getInt16(smpl.start + (sampleStart + i) * 2, true) / 32768.0;
+        if (i > 0 && (i & (soundFontParseYieldInterval - 1)) == 0) await yieldSoundFontParse();
     }
-    centerWave(raw);
-    raw.push(0);
-    const rawSamples: Float32Array = new Float32Array(raw);
+    await centerWave(rawSamples, length);
     return {
         name: cleanName(header.name),
         sampleRate: header.sampleRate,
         originalPitch: header.originalPitch,
         pitchCorrection: header.pitchCorrection,
         rawSamples: rawSamples,
-        integratedSamples: performIntegral(rawSamples),
+        integratedSamples: await performIntegralAsync(rawSamples),
         loopStart: clamp(0, length - 1, header.startLoop - sampleStart),
         loopEnd: clamp(1, length, header.endLoop - sampleStart),
     };
@@ -423,12 +477,97 @@ function cleanName(name: string): string {
     return name.replace(/\0[\s\S]*$/gm, "").trim();
 }
 
-function centerWave(wave: number[]): void {
+async function centerWave(wave: Float32Array, length: number): Promise<void> {
     let sum: number = 0.0;
-    for (const sample of wave) sum += sample;
-    const average: number = sum / wave.length;
-    for (let i: number = 0; i < wave.length; i++) wave[i] -= average;
+    for (let i: number = 0; i < length; i++) {
+        sum += wave[i];
+        if (i > 0 && (i & (soundFontParseYieldInterval - 1)) == 0) await yieldSoundFontParse();
+    }
+    const average: number = sum / length;
+    for (let i: number = 0; i < length; i++) {
+        wave[i] -= average;
+        if (i > 0 && (i & (soundFontParseYieldInterval - 1)) == 0) await yieldSoundFontParse();
+    }
 }
+
+async function performIntegralAsync(wave: Float32Array): Promise<Float32Array> {
+    let cumulative: number = 0.0;
+    const newWave: Float32Array = new Float32Array(wave.length);
+    for (let i: number = 0; i < wave.length; i++) {
+        newWave[i] = cumulative;
+        cumulative += wave[i];
+        if (i > 0 && (i & (soundFontParseYieldInterval - 1)) == 0) await yieldSoundFontParse();
+    }
+    return newWave;
+}
+
+function yieldSoundFontParse(): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+const soundFontWorkerScript: string = `
+self.onmessage = function(event) {
+    try {
+        var data = event.data;
+        var view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        var smpl = data.smpl;
+        var sampleCount = Math.floor(smpl.size / 2);
+        var samples = [];
+        var transfers = [];
+        for (var headerIndex = 0; headerIndex < data.headers.length; headerIndex++) {
+            var header = data.headers[headerIndex];
+            var sampleStart = clamp(0, Math.max(0, sampleCount - 1), header.start);
+            var sampleEnd = clamp(sampleStart + 1, sampleCount, header.end);
+            var length = Math.max(1, sampleEnd - sampleStart);
+            var rawSamples = new Float32Array(length + 1);
+            for (var i = 0; i < length; i++) {
+                rawSamples[i] = view.getInt16(smpl.start + (sampleStart + i) * 2, true) / 32768.0;
+            }
+            centerWave(rawSamples, length);
+            var integratedSamples = performIntegral(rawSamples);
+            samples.push({
+                name: cleanName(header.name),
+                sampleRate: header.sampleRate,
+                originalPitch: header.originalPitch,
+                pitchCorrection: header.pitchCorrection,
+                rawSamples: rawSamples,
+                integratedSamples: integratedSamples,
+                loopStart: clamp(0, length - 1, header.startLoop - sampleStart),
+                loopEnd: clamp(1, length, header.endLoop - sampleStart),
+            });
+            transfers.push(rawSamples.buffer, integratedSamples.buffer);
+        }
+        self.postMessage({ samples: samples }, transfers);
+    } catch (error) {
+        self.postMessage({ error: String(error && error.message || error) });
+    }
+};
+
+function centerWave(wave, length) {
+    var sum = 0.0;
+    for (var i = 0; i < length; i++) sum += wave[i];
+    var average = sum / length;
+    for (var j = 0; j < length; j++) wave[j] -= average;
+}
+
+function performIntegral(wave) {
+    var cumulative = 0.0;
+    var newWave = new Float32Array(wave.length);
+    for (var i = 0; i < wave.length; i++) {
+        newWave[i] = cumulative;
+        cumulative += wave[i];
+    }
+    return newWave;
+}
+
+function cleanName(name) {
+    return name.replace(/\\0[\\s\\S]*$/gm, "").trim();
+}
+
+function clamp(min, max, value) {
+    return Math.max(min, Math.min(max, value));
+}
+`;
 
 function generatorAmount(generator: Generator | undefined, defaultValue: number): number {
     return generator == null ? defaultValue : generator.amount;
