@@ -702,7 +702,6 @@ function onKeyPressed(event: KeyboardEvent): void {
 			renderPlayhead();
 			event.preventDefault();
 			break;
-		case 69: // e
 		case 80: // p
 			if (event.shiftKey) {
 				hashUpdatedExternally();

@@ -7,6 +7,7 @@ import { SongDocument } from "./SongDocument";
 import { Prompt } from "./Prompt";
 import { ChangeGroup } from "./Change";
 import { ChangeEnsurePatternExists, ChangeInsertBars, ChangeNoteAdded, ChangeNoteTruncate, ChangePatternNumbers, ChangeSetPatternInstruments } from "./changes";
+import { ColorConfig } from "./ColorConfig";
 
 const { button, div, h2, textarea } = HTML;
 
@@ -47,6 +48,11 @@ const romanRoots: { [name: string]: number } = {
     "V": 4,
     "VI": 5,
     "VII": 6,
+    "VIII": 7,
+    "IX": 8,
+    "X": 9,
+    "XI": 10,
+    "XII": 11,
 };
 
 const chordIntervals: { [quality: string]: number[] } = {
@@ -206,7 +212,7 @@ function parseChordToken(doc: SongDocument, token: string, tokenStart: number): 
         }
         rootLength = root.length;
     } else {
-        const romanMatch: RegExpMatchArray | null = token.substring(index).match(/^(?:VII|III|VI|IV|II|V|I|vii|iii|vi|iv|ii|v|i)/);
+        const romanMatch: RegExpMatchArray | null = token.substring(index).match(/^(?:XII|VIII|VII|III|XI|IX|VI|IV|II|X|V|I|xii|viii|vii|iii|xi|ix|vi|iv|ii|x|v|i)/);
         if (romanMatch == null) return { reason: "Unknown chord root", index: tokenStart + index };
         const roman: string = romanMatch[0];
         minorRoman = roman == roman.toLowerCase();
@@ -304,9 +310,10 @@ function makeChordNote(pitches: number[], start: number, end: number): Note {
 
 export class ChordProgressionPrompt implements Prompt {
     private readonly _textArea: HTMLTextAreaElement = textarea({
-        style: "width: 100%; height: 12em; resize: vertical;",
+        style: `width: 100%; height: 12em; resize: vertical; font-size: 115%; background: transparent; text-align: left; border: 1px solid ${ColorConfig.inputBoxOutline}; color: ${ColorConfig.primaryText};`,
         spellcheck: "false",
-    }, "Cmaj9 Fmin9 Db9 | bII9 Emin7(b9) IVmaj9 ivmin9");
+        placeholder: "Cmaj9 Fmin9 Db9 | bII9 Emin7(b9) IVmaj9 ivmin9",
+    });
     private readonly _errorText: HTMLDivElement = div({ style: "color: #ff6666; text-align: right; flex: 1; padding-right: 1em;" });
     private readonly _okayButton: HTMLButtonElement = button({ class: "okayButton", style: "width: 45%;" }, "Okay");
     private readonly _cancelButton: HTMLButtonElement = button({ class: "cancelButton" });

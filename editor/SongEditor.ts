@@ -48,7 +48,7 @@ import { SpectrumEditor, SpectrumEditorPrompt } from "./SpectrumEditor";
 import { CustomThemePrompt } from "./CustomThemePrompt";
 import { ThemePrompt } from "./ThemePrompt";
 import { TipPrompt } from "./TipPrompt";
-import { ChangeTempo, ChangeKeyOctave, ChangeChorus, ChangeEchoDelay, ChangeEchoSustain, ChangeReverb, ChangeVolume, ChangePan, ChangePatternSelection, ChangePatternsPerChannel, ChangePatternNumbers, ChangeSupersawDynamism, ChangeSupersawSpread, ChangeSupersawShape, ChangePulseWidth, ChangeFeedbackAmplitude, ChangeOperatorAmplitude, ChangeOperatorFrequency, ChangeDrumsetEnvelope, ChangePasteInstrument, ChangePreset, pickRandomPresetValue, ChangeRandomGeneratedInstrument, ChangeEQFilterType, ChangeNoteFilterType, ChangeEQFilterSimpleCut, ChangeEQFilterSimplePeak, ChangeNoteFilterSimpleCut, ChangeNoteFilterSimplePeak, ChangeScale, ChangeDetectKey, ChangeKey, ChangeVisualKey, ChangeRhythm, ChangeFeedbackType, ChangeAlgorithm, ChangeChipWave, ChangeNoiseWave, ChangeTransition, ChangeToggleEffects, ChangeVibrato, ChangeUnison, ChangeChord, ChangeSong, ChangePitchShift, ChangeDetune, ChangeDistortion, ChangeStringSustain, ChangeBitcrusherFreq, ChangeBitcrusherQuantization, ChangeAddEnvelope, ChangeEnvelopeSpeed, ChangeAddChannelInstrument, ChangeRemoveChannelInstrument, ChangeCustomWave, ChangeOperatorWaveform, ChangeOperatorPulseWidth, ChangeSongTitle, ChangeVibratoDepth, ChangeVibratoSpeed, ChangeVibratoDelay, ChangeVibratoType, ChangePanDelay, ChangeArpeggioSpeed, ChangeFastTwoNoteArp, ChangeClicklessTransition, ChangeAliasing, ChangeSetPatternInstruments, ChangeHoldingModRecording, ChangeChipWavePlayBackwards, ChangeChipWaveStartOffset, ChangeChipWaveLoopEnd, ChangeChipWaveLoopStart, ChangeChipWaveLoopMode, ChangeChipWaveUseAdvancedLoopControls, ChangeSoundFontInstrument, ChangeSoundFontSample, ChangeSoundFontDrumsetInstrument, ChangeSoundFontDrumsetSample, ChangeSoundFontForceOneshot, ChangeDecimalOffset, ChangeUnisonVoices, ChangeUnisonSpread, ChangeUnisonOffset, ChangeUnisonExpression, ChangeUnisonSign, Change6OpFeedbackType, Change6OpAlgorithm, ChangeCustomAlgorythmorFeedback, ChangeRingMod, ChangeRingModHz, ChangeRingModChipWave, ChangeRingModPulseWidth, ChangeGranular, ChangeGrainSize, ChangeGrainAmounts, ChangeGrainRange, ChangeMonophonicTone, ChangePhaserMix, ChangePhaserFreq, ChangePhaserFeedback, ChangePhaserStages, ChangeInvertWave, ChangeUpperLimit, ChangeLowerLimit, pickNextPresetValue } from "./changes";
+import { ChangeTempo, ChangeKeyOctave, ChangeChorus, ChangeEchoDelay, ChangeEchoSustain, ChangeReverb, ChangeVolume, ChangePan, ChangePatternSelection, ChangePatternsPerChannel, ChangePatternNumbers, ChangeSupersawDynamism, ChangeSupersawSpread, ChangeSupersawShape, ChangePulseWidth, ChangeFeedbackAmplitude, ChangeOperatorAmplitude, ChangeOperatorFrequency, ChangeDrumsetEnvelope, ChangePasteInstrument, ChangePreset, pickRandomPresetValue, ChangeRandomGeneratedInstrument, ChangeEQFilterType, ChangeNoteFilterType, ChangeEQFilterSimpleCut, ChangeEQFilterSimplePeak, ChangeNoteFilterSimpleCut, ChangeNoteFilterSimplePeak, ChangeScale, ChangeDetectKey, ChangeKey, ChangeVisualKey, ChangeRhythm, ChangeFeedbackType, ChangeAlgorithm, ChangeChipWave, ChangeNoiseWave, ChangeTransition, ChangeToggleEffects, ChangeVibrato, ChangeUnison, ChangeChord, ChangeSong, ChangePitchShift, ChangeDetune, ChangeDistortion, ChangeStringSustain, ChangeBitcrusherFreq, ChangeBitcrusherQuantization, ChangeAddEnvelope, ChangeEnvelopeSpeed, ChangeAddChannelInstrument, ChangeRemoveChannelInstrument, ChangeCustomWave, ChangeOperatorWaveform, ChangeOperatorPulseWidth, ChangeSongTitle, ChangeVibratoDepth, ChangeVibratoSpeed, ChangeVibratoDelay, ChangeVibratoType, ChangePanDelay, ChangeArpeggioSpeed, ChangeFastTwoNoteArp, ChangeClicklessTransition, ChangeAliasing, ChangeSetPatternInstruments, ChangeHoldingModRecording, ChangeChipWavePlayBackwards, ChangeChipWaveStartOffset, ChangeChipWaveLoopEnd, ChangeChipWaveLoopStart, ChangeChipWaveLoopMode, ChangeChipWaveUseAdvancedLoopControls, ChangeSoundFontInstrument, ChangeSoundFontSample, ChangeSoundFontDrumsetInstrument, ChangeSoundFontDrumsetSample, ChangeSoundFontForceOneshot, ChangeDecimalOffset, ChangeUnisonVoices, ChangeUnisonSpread, ChangeUnisonOffset, ChangeUnisonExpression, ChangeUnisonSign, Change6OpFeedbackType, Change6OpAlgorithm, ChangeCustomAlgorythmorFeedback, ChangeRingMod, ChangeRingModHz, ChangeRingModChipWave, ChangeRingModPulseWidth, ChangeGranular, ChangeGrainSize, ChangeGrainAmounts, ChangeGrainRange, ChangeMonophonicTone, ChangePhaserMix, ChangePhaserFreq, ChangePhaserFeedback, ChangePhaserStages, ChangeInvertWave, ChangeUpperLimit, ChangeLowerLimit } from "./changes";
 
 import { TrackEditor } from "./TrackEditor";
 import { oscilloscopeCanvas } from "../global/Oscilloscope";
@@ -109,7 +109,7 @@ function buildPresetOptions(isNoise: boolean, idSet: string): HTMLSelectElement 
     const randomGroup: HTMLElement = optgroup({ label: "Randomize ▾" });
     // const randomGroup: HTMLElement = optgroup({ label: "▾ Randomize" });
     randomGroup.appendChild(option({ value: "randomPreset" }, "Random Preset (R)"));
-    randomGroup.appendChild(option({ value: "randomGenerated" }, "Random Generated (Shift + R)"));
+    randomGroup.appendChild(option({ value: "randomGenerated" }, "Random Generated"));
     menu.appendChild(randomGroup);
 
     let firstCategoryGroup: HTMLElement | null = null;
@@ -994,14 +994,13 @@ export class SongEditor {
     );
     private readonly _editMenu: HTMLSelectElement = select({ style: "width: 100%;" },
         option({ selected: true, disabled: true, hidden: false }, "Edit"), // todo: "hidden" should be true but looks wrong on mac chrome, adds checkmark next to first visible option even though it's not selected. :(
-        option({ value: "pasteNumbers" }, "Paste Pattern Numbers (" + EditorConfig.ctrlSymbol + "⇧V)"),
         option({ value: "duplicatePatterns" }, "Duplicate Reused Patterns (D)"),
         option({ value: "rectifyPatterns" }, "Rectify Patterns (" + EditorConfig.ctrlSymbol + "⇧D)"),
         option({ value: "transposeUp" }, "Move Notes Up (+ or ⇧+)"),
         option({ value: "transposeDown" }, "Move Notes Down (- or ⇧-)"),
         option({ value: "moveNotesSideways" }, "Move All Notes Sideways... (W)"),
-        option({ value: "generateEuclideanRhythm" }, "Generate Euclidean Rhythm... (" + EditorConfig.ctrlSymbol + "E)"),
-        option({ value: "writeChordProgression" }, "Write Chord Progression..."),
+        option({ value: "generateEuclideanRhythm" }, "Generate Euclidean Rhythm..."),
+        option({ value: "writeChordProgression" }, "Write Chord Progression... (⇧T)"),
         option({ value: "beatsPerBar" }, "Change Beats Per Bar... (⇧B)"),
         option({ value: "barCount" }, "Change Song Length... (L)"),
         option({ value: "channelSettings" }, "Channel Settings... (Q)"),
@@ -1354,14 +1353,14 @@ export class SongEditor {
     private readonly _algorithm6OpSelectRow: HTMLDivElement = div(div({ class: "selectRow" }, span({ class: "tip", onclick: () => this._openPrompt("algorithm") }, "Algorithm: "), div({ class: "selectContainer" }, this._algorithm6OpSelect))
         , div({ style: "height:144px; display:flex; flex-direction: row; align-items:center; justify-content:center;" }, div({ style: "display:block; width:10px; margin-right: 0.2em" }, this._algorithmCanvasSwitch), div({ style: "width:144px; height:144px;" }, this._customAlgorithmCanvas.canvas)));//temp
 
-    private readonly _instrumentCopyButton: HTMLButtonElement = button({ style: "max-width:86px; width: 86px;", class: "copyButton", title: "Copy Instrument (⇧C)" }, [
+    private readonly _instrumentCopyButton: HTMLButtonElement = button({ style: "max-width:86px; width: 86px;", class: "copyButton", title: "Copy Instrument" }, [
         "Copy",
         // Copy icon:
         SVG.svg({ style: "flex-shrink: 0; position: absolute; left: 0; top: 50%; margin-top: -1em; pointer-events: none;", width: "2em", height: "2em", viewBox: "-5 -21 26 26" }, [
             SVG.path({ d: "M 0 -15 L 1 -15 L 1 0 L 13 0 L 13 1 L 0 1 L 0 -15 z M 2 -1 L 2 -17 L 10 -17 L 14 -13 L 14 -1 z M 3 -2 L 13 -2 L 13 -12 L 9 -12 L 9 -16 L 3 -16 z", fill: "currentColor" }),
         ]),
     ]);
-    private readonly _instrumentPasteButton: HTMLButtonElement = button({ style: "max-width:86px;", class: "pasteButton", title: "Paste Instrument (⇧V)" }, [
+    private readonly _instrumentPasteButton: HTMLButtonElement = button({ style: "max-width:86px;", class: "pasteButton", title: "Paste Instrument" }, [
         "Paste",
         // Paste icon:
         SVG.svg({ style: "flex-shrink: 0; position: absolute; left: 0; top: 50%; margin-top: -1em; pointer-events: none;", width: "2em", height: "2em", viewBox: "0 0 26 26" }, [
@@ -4804,14 +4803,12 @@ export class SongEditor {
             case 67: // c
                 if (canPlayNotes) break;
                 
-                if (event.shiftKey) {
-                    this._copyInstrument();
-                } else {
+                if (!event.shiftKey) {
                     this.doc.selection.copy();
                     this.doc.selection.resetBoxSelection();
                     this.doc.selection.selectionUpdated();
+                    event.preventDefault();
                 }
-                event.preventDefault();
                 break;
             case 13: // enter/return
                 this.doc.synth.loopBarStart = -1;
@@ -4871,31 +4868,6 @@ export class SongEditor {
                        this.doc.selection.duplicatePatterns(event.shiftKey ? false : true); 
                        event.preventDefault();
                     }
-                }
-                break;
-            case 69: // e (+shift: eq filter settings)
-                if (canPlayNotes) break;
-                if (event.shiftKey) {
-                    const instrument: Instrument = this.doc.song.channels[this.doc.channel].instruments[this.doc.getCurrentInstrument()];
-                    if (!instrument.eqFilterType && this.doc.channel < this.doc.song.pitchChannelCount + this.doc.song.noiseChannelCount)
-                        this._openPrompt("customEQFilterSettings");
-                } else if (event.altKey) {
-                    //open / close all envelope dropdowns
-                    const instrument: Instrument = this.doc.song.channels[this.doc.channel].instruments[this.doc.getCurrentInstrument()];
-                    const isAllOpen: boolean = this.envelopeEditor.openExtraSettingsDropdowns.every((x) => { return x == true })
-                    for (let i = 0; i < instrument.envelopeCount; i++) {
-                        if (isAllOpen) this.envelopeEditor.openExtraSettingsDropdowns[i] = false;
-                        else this.envelopeEditor.openExtraSettingsDropdowns[i] = true;
-                    }
-                    this.envelopeEditor.rerenderExtraSettings();
-                    event.preventDefault();
-                } else if (event.ctrlKey) {
-                    // EUCLEDIAN RHYTHM SHORTCUT (E)
-                    this._openPrompt("generateEuclideanRhythm");
-                    event.preventDefault();
-                    break;
-                } else if (needControlForShortcuts == (event.ctrlKey || event.metaKey)) {
-                    this._openPrompt("customSongEQFilterSettings");
                 }
                 break;
             case 70: // f
@@ -5157,14 +5129,10 @@ export class SongEditor {
                 break;
             case 86: // v
                 if (canPlayNotes) break;
-                if ((event.ctrlKey || event.metaKey) && event.shiftKey && !needControlForShortcuts) {
-                    this.doc.selection.pasteNumbers();
-                } else if (event.shiftKey) {
-                    this._pasteInstrument();
-                } else {
+                if (!event.shiftKey) {
                     this.doc.selection.pasteNotes();
+                    event.preventDefault();
                 }
-                event.preventDefault();
                 break;
             case 87: // w
                 if (canPlayNotes) break;
@@ -5197,21 +5165,18 @@ export class SongEditor {
             case 82: // r
                 if (canPlayNotes) break;
                 if (needControlForShortcuts == (event.ctrlKey || event.metaKey)) {
-                    if (event.shiftKey) {
-                        this._randomGenerated(false);
-                    } else if (event.altKey) {
-                        this._randomGenerated(true);
-                    } else {
+                    if (!event.shiftKey && !event.altKey) {
                         this._randomPreset();
+                        event.preventDefault();
                     }
-                    event.preventDefault();
                 }
                 break;
             case 84: // t
                 if (canPlayNotes) break;
-                if (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) break;
-                this._nextPreset();
-                event.preventDefault();
+                if (needControlForShortcuts == (event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey) {
+                    this._openPrompt("writeChordProgression");
+                    event.preventDefault();
+                }
                 break;
             case 219: // left brace
                 if (canPlayNotes) break;
@@ -5624,19 +5589,6 @@ export class SongEditor {
         
     }
 
-    private _nextPreset(): void {
-        const isNoise: boolean = this.doc.song.getChannelIsNoise(this.doc.channel);
-        let presetValue: number = pickNextPresetValue(isNoise,this.doc.prefs.rollNoveltyPresets)
-
-        if (presetValue > 0) {
-            this.doc.record(new ChangePreset(this.doc, presetValue));
-        } else if (presetValue == -1) { //no results
-            alert("One or more of the tags you entered doesn't exist. \nPlease double check your spelling. \n\nIf you don't know what tags exist, you can reffer to the tag list in the description below.")
-        } else if (presetValue == -2) { //incorrect tag
-            alert("One or more of the tags you entered doesn't exist. \n\nPlease double check your spelling.")
-        }
-    }
-
     private _randomGenerated(usesCurrentInstrumentType: boolean): void {
         this.doc.record(new ChangeRandomGeneratedInstrument(this.doc, usesCurrentInstrumentType));
     }
@@ -6044,9 +5996,6 @@ export class SongEditor {
                 break;
             case "pasteNotes":
                 this.doc.selection.pasteNotes();
-                break;
-            case "pasteNumbers":
-                this.doc.selection.pasteNumbers();
                 break;
             case "transposeUp":
                 this.doc.selection.transpose(true, false);

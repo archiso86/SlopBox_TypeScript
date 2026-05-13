@@ -95,9 +95,7 @@ export class KeyboardLayout {
 			
 			case "KeyQ": this.handleKey(0, 2, pressed); break;
 			case "KeyW": this.handleKey(1, 2, pressed); break;
-			case "KeyE": this.handleKey(2, 2, pressed); break;
 			case "KeyR": this.handleKey(3, 2, pressed); break;
-			case "KeyT": this.handleKey(4, 2, pressed); break;
 			case "KeyY": this.handleKey(5, 2, pressed); break;
 			case "KeyU": this.handleKey(6, 2, pressed); break;
 			case "KeyI": this.handleKey(7, 2, pressed); break;
