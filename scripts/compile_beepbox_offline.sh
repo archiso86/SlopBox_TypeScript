@@ -12,7 +12,6 @@ npx rollup build/editor/main.js \
 	--format iife \
 	--output.name beepbox \
 	--context exports \
-	--plugin rollup-plugin-sourcemaps \
 	--plugin @rollup/plugin-node-resolve
 
 # Minify to_deploy/beepbox_editor.min.js into to_deploy/beepbox_editor.min.js
