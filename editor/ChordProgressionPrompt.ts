@@ -30,6 +30,12 @@ interface ParseFailure {
 
 type ParseResult = ParseSuccess | ParseFailure;
 
+interface ParsedRoot {
+    semitone: number;
+    length: number;
+    minorRoman: boolean;
+}
+
 const noteRoots: { [name: string]: number } = {
     "C": 0,
     "D": 2,
@@ -191,11 +197,11 @@ function intervalsForQuality(rawQuality: string, minorRoman: boolean): number[] 
     return null;
 }
 
-function parseChordToken(doc: SongDocument, token: string, tokenStart: number): ParsedChord | ParseFailure {
+function parseRoot(doc: SongDocument, token: string, startIndex: number, tokenStart: number): ParsedRoot | ParseFailure {
     let index: number = 0;
     let accidental: number = 0;
-    while (token.charAt(index) == "b" || token.charAt(index) == "#") {
-        accidental += token.charAt(index) == "b" ? -1 : 1;
+    while (token.charAt(startIndex + index) == "b" || token.charAt(startIndex + index) == "#") {
+        accidental += token.charAt(startIndex + index) == "b" ? -1 : 1;
         index++;
     }
 
@@ -203,7 +209,7 @@ function parseChordToken(doc: SongDocument, token: string, tokenStart: number): 
     let rootLength: number = 0;
     let minorRoman: boolean = false;
 
-    const noteMatch: RegExpMatchArray | null = token.substring(index).match(/^[A-G](?:bb|b|##|#)?/);
+    const noteMatch: RegExpMatchArray | null = token.substring(startIndex + index).match(/^[A-G](?:bb|b|##|#)?/);
     if (noteMatch != null) {
         const root: string = noteMatch[0];
         rootSemitone = noteRoots[root.charAt(0)];
@@ -212,21 +218,44 @@ function parseChordToken(doc: SongDocument, token: string, tokenStart: number): 
         }
         rootLength = root.length;
     } else {
-        const romanMatch: RegExpMatchArray | null = token.substring(index).match(/^(?:XII|VIII|VII|III|XI|IX|VI|IV|II|X|V|I|xii|viii|vii|iii|xi|ix|vi|iv|ii|x|v|i)/);
-        if (romanMatch == null) return { reason: "Unknown chord root", index: tokenStart + index };
+        const romanMatch: RegExpMatchArray | null = token.substring(startIndex + index).match(/^(?:XII|VIII|VII|III|XI|IX|VI|IV|II|X|V|I|xii|viii|vii|iii|xi|ix|vi|iv|ii|x|v|i)/);
+        if (romanMatch == null) return { reason: "Unknown chord root", index: tokenStart + startIndex + index };
         const roman: string = romanMatch[0];
         minorRoman = roman == roman.toLowerCase();
         const degree: number = romanRoots[roman.toUpperCase()];
         const degreePitch: number | null = getScaleDegreePitch(doc, degree);
-        if (degreePitch == null) return { reason: "Selected scale has no notes", index: tokenStart + index };
+        if (degreePitch == null) return { reason: "Selected scale has no notes", index: tokenStart + startIndex + index };
         rootSemitone = Config.keys[doc.song.visualKey].basePitch + degreePitch;
         rootLength = roman.length;
     }
 
-    index += rootLength;
     rootSemitone += accidental;
+    return { semitone: rootSemitone, length: index + rootLength, minorRoman: minorRoman };
+}
 
-    let quality: string = token.substring(index);
+function parseChordToken(doc: SongDocument, token: string, tokenStart: number): ParsedChord | ParseFailure {
+    const slashIndex: number = token.indexOf("/");
+    if (slashIndex >= 0 && token.indexOf("/", slashIndex + 1) >= 0) return { reason: "Too many slash chord bass notes", index: tokenStart + slashIndex + 1 };
+    if (slashIndex == 0) return { reason: "Missing chord before slash", index: tokenStart };
+    if (slashIndex == token.length - 1) return { reason: "Missing slash chord bass note", index: tokenStart + slashIndex };
+
+    const chordToken: string = slashIndex < 0 ? token : token.substring(0, slashIndex);
+    const root: ParsedRoot | ParseFailure = parseRoot(doc, chordToken, 0, tokenStart);
+    if ("reason" in root) return root;
+
+    let index: number = root.length;
+    const rootSemitone: number = root.semitone;
+    const minorRoman: boolean = root.minorRoman;
+
+    let bassSemitone: number | null = null;
+    if (slashIndex >= 0) {
+        const bass: ParsedRoot | ParseFailure = parseRoot(doc, token, slashIndex + 1, tokenStart);
+        if ("reason" in bass) return { reason: "Unknown slash chord bass note", index: bass.index };
+        if (slashIndex + 1 + bass.length != token.length) return { reason: "Bad slash chord bass note", index: tokenStart + slashIndex + 1 + bass.length };
+        bassSemitone = bass.semitone;
+    }
+
+    let quality: string = chordToken.substring(index);
     if (quality.startsWith("(")) return { reason: "Missing chord quality before alteration", index: tokenStart + index };
     const alterationMatch: RegExpMatchArray | null = quality.match(/^(.*)\(([^)]+)\)$/);
     let alteration: string | null = null;
@@ -252,13 +281,30 @@ function parseChordToken(doc: SongDocument, token: string, tokenStart: number): 
     }
 
     const rootOctave: number = 3 * Config.pitchesPerOctave;
+    const rootPitch: number = rootOctave + rootSemitone;
+    let bassPitch: number | null = null;
+    if (bassSemitone != null) {
+        bassPitch = rootOctave + bassSemitone;
+        while (bassPitch > rootPitch) bassPitch -= Config.pitchesPerOctave;
+    }
     const storedPitches: number[] = [];
     for (const interval of intervals) {
-        let visualPitch: number = rootOctave + rootSemitone + interval;
+        let visualPitch: number = rootPitch + interval;
+        if (bassPitch != null) {
+            while (visualPitch < bassPitch) visualPitch += Config.pitchesPerOctave;
+        }
         while (visualPitch < 0) visualPitch += Config.pitchesPerOctave;
         while (visualPitch > Config.maxPitch) visualPitch -= Config.pitchesPerOctave;
         const storedPitch: number = visualToStoredPitch(doc, visualPitch);
         if (storedPitch < 0 || storedPitch > Config.maxPitch) return { reason: "Chord pitch out of range", index: tokenStart };
+        if (storedPitches.indexOf(storedPitch) == -1) storedPitches.push(storedPitch);
+    }
+    if (bassPitch != null) {
+        let visualPitch: number = bassPitch;
+        while (visualPitch < 0) visualPitch += Config.pitchesPerOctave;
+        while (visualPitch > Config.maxPitch) visualPitch -= Config.pitchesPerOctave;
+        const storedPitch: number = visualToStoredPitch(doc, visualPitch);
+        if (storedPitch < 0 || storedPitch > Config.maxPitch) return { reason: "Slash chord bass pitch out of range", index: tokenStart + slashIndex + 1 };
         if (storedPitches.indexOf(storedPitch) == -1) storedPitches.push(storedPitch);
     }
 
@@ -404,7 +450,6 @@ export class ChordProgressionPrompt implements Prompt {
 
     private _whenKeyPressed = (event: KeyboardEvent): void => {
         if (event.keyCode == 27) {
-            this._close();
             event.preventDefault();
         } else if (event.keyCode == 13 && !event.shiftKey) {
             this._saveChanges();
