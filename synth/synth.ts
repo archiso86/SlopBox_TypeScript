@@ -3359,7 +3359,7 @@ export class Song {
     private static readonly _oldestSlarmoosBoxVersion: number = 1;
     private static readonly _latestSlarmoosBoxVersion: number = 5;
     private static readonly _oldestJukeBoxVersion: number = 1;
-    private static readonly _latestJukeBoxVersion: number = 5;
+    private static readonly _latestJukeBoxVersion: number = 6;
     // One-character variant detection at the start of URL to distinguish variants such as JummBox, Or Goldbox. "j" and "g" respectively
     //also "u" is ultrabox lol
     // private static readonly _variant = 0x73; //"S" - Slarmoo's Box
@@ -4342,15 +4342,7 @@ export class Song {
 
                         // Old format was:
                         // 0: 1 pitch, 10: 2 pitches, 110: 3 pitches, 111: 4 pitches
-                        // New format is:
-                        //      0: 1 pitch
-                        // 1[XXX]: 3 bits of binary signifying 2+ pitches
-                        if (note.pitches.length == 1) {
-                            shapeBits.write(1, 0);
-                        } else {
-                            shapeBits.write(1, 1);
-                            shapeBits.write(3, note.pitches.length - 2);
-                        }
+                        shapeBits.write(5, note.pitches.length - 1);
 
                         shapeBits.writePinCount(note.pins.length - 1);
 
@@ -6351,6 +6343,7 @@ export class Song {
                 let bitStringLength: number = 0;
                 let channelIndex: number;
                 let largerChords: boolean = !((beforeFour && fromJummBox) || fromBeepBox);
+                let extendedChordCounts: boolean = fromJukeBox && !beforeSix;
                 let recentPitchBitLength: number = (largerChords ? 4 : 3);
                 let recentPitchLength: number = (largerChords ? 16 : 8);
                 if (beforeThree && fromBeepBox) {
@@ -6582,8 +6575,8 @@ export class Song {
                                         shape.pitchCount = 1;
                                         while (shape.pitchCount < 4 && bits.read(1) == 1) shape.pitchCount++;
                                     }
-                                    else {
-                                        // New format is:
+                                    else if (!extendedChordCounts) {
+                                        // Newer legacy format is:
                                         //      0: 1 pitch
                                         // 1[XXX]: 3 bits of binary signifying 2+ pitches
                                         if (bits.read(1) == 1) {
@@ -6592,6 +6585,8 @@ export class Song {
                                         else {
                                             shape.pitchCount = 1;
                                         }
+                                    } else {
+                                        shape.pitchCount = bits.read(5) + 1;
                                     }
 
                                     shape.pinCount = bits.readPinCount();

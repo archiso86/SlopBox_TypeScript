@@ -15,13 +15,14 @@ Allows saving made songs to a `.json` file
 
 # Build environment
 Use `scripts/npm-distrobox.sh`, NOT `npm`
+`scripts/node-distrobox.sh`, NOT `node`
 Example: `./scripts/npm-distrobox.sh run build-offline`
 
 `distrobox.ini` defines Distrobox container configuration
 
 ---
 # Rules
-- `build` and/or `build-offline` at the end of your turn to apply changes, only if you wrote code
+- `build` and/or `build-offline` at the end of your turn to apply changes, only if you wrote editor code
 - Avoid messing with internals, this is a fork of an existing project
 
 ## Debugging

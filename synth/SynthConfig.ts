@@ -1294,7 +1294,7 @@ export class Config {
         { name: "custom interval", customInterval: true, arpeggiates: false, strumParts: 0, singleTone: true },
         { name: "monophonic", customInterval: false, arpeggiates: false, strumParts: 0, singleTone: true}
     ]);
-    public static readonly maxChordSize: number = 9;
+    public static readonly maxChordSize: number = 32;
     public static readonly operatorCount: number = 4;
     public static readonly maxPitchOrOperatorCount: number = Math.max(Config.maxChordSize, Config.operatorCount + 2);
     public static readonly algorithms: DictionaryArray<Algorithm> = toNameMap([

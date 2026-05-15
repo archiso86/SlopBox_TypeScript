@@ -747,7 +747,7 @@ html {
 	box-shadow: 5px 5px 20px 10px rgba(0,0,0,0.5);
 }
 
-.beepboxEditor .prompt > *:not(:first-child):not(.cancelButton) {
+.beepboxEditor .prompt > *:not(:first-child):not(.cancelButton):not(.chordProgressionHelpButton) {
 	margin-top: 1.5em;
 }
 
@@ -1008,6 +1008,14 @@ html {
 	position: absolute;
 	top: 8px;
 	right: 8px;
+}
+
+.beepboxEditor button.chordProgressionHelpButton {
+	width: var(--button-size);
+	position: absolute;
+	top: 8px;
+	right: calc(12px + var(--button-size));
+	font-weight: bold;
 }
 
 .beepboxEditor .playback-bar-controls {
